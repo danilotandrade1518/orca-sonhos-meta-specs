@@ -16,6 +16,12 @@ Central de documentação para o projeto OrçaSonhos, uma plataforma de gestão 
 - Stack tecnológico, estratégia de testes e padrões de código
 - Configurações offline-first, mobile-first e autenticação Firebase
 
+### [`adr/`](./adr/index.md)
+**Architecture Decision Records**
+- Registro histórico de todas as decisões arquiteturais do projeto
+- Stack de backend, banco de dados, infraestrutura e padrões de API
+- Evolução das escolhas técnicas com contexto e justificativas
+
 ## 🚀 Para Começar
 
 ### Novos Desenvolvedores
@@ -30,6 +36,7 @@ Central de documentação para o projeto OrçaSonhos, uma plataforma de gestão 
 ### Arquitetos/Tech Leads
 1. [`technical/01_visao-arquitetural-backend.md`](./technical/01_visao-arquitetural-backend.md) - Backend architecture
 2. [`technical/02_visao-arquitetural-frontend.md`](./technical/02_visao-arquitetural-frontend.md) - Frontend architecture
+3. [`adr/index.md`](./adr/index.md) - Decisões arquiteturais e evolução técnica
 
 ## 🎯 Conceitos-Chave do OrçaSonhos
 
