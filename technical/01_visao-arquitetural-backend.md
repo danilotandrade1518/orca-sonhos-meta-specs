@@ -172,6 +172,11 @@ Goals implementam um modelo de **"reserva 1:1"**:
 - Account calcula: **Saldo Total** vs **Saldo Disponível** (descontando reservas)
 - Operações: `AddAmountToGoalUseCase`, `RemoveAmountFromGoalUseCase`
 
+**Operações de Deleção e Transferência:**
+- Ao deletar um Account, o Goal vinculado será deletado automaticamente
+- Será implementada funcionalidade para transferir Goal para outra Account antes da deleção
+- Use Case: `TransferGoalToAccountUseCase` para mover Goal entre Accounts
+
 ```typescript
 // Exemplo conceitual
 class Goal {
