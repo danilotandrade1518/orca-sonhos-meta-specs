@@ -30,7 +30,9 @@ Não teremos inicialmente de forma obrigatória, projeção de views, apenas ire
 ## 3. Responsabilidades das Camadas
 
 - **Domain:** Agregados, entidades (dentro dos agregados), value objects (globais e específicos) e regras de negócio puras, sem dependências externas.
-- **Use Cases:** Orquestram as regras de negócio, coordenando entidades e serviços. Use Cases normalmente irão utilizar Repositories para acesso ao banco de dados, Unit of Work para operações transacionais complexas.
+- **Use Cases:** Orquestram as regras de negócio, coordenando entidades e serviços. Use Cases irão utilizar:
+  - **Repositories**: Para operações que salvam APENAS 1 agregado (mais simples)
+  - **Unit of Work**: EXCLUSIVAMENTE para operações que salvam MAIS DE 1 agregado ao mesmo tempo
 - **Queries:** Tratam views do sistema. Query Handlers normalmente irão utilizar DAO's para acesso ao banco de dados.
 - **Web:** Pontos de entrada/saída HTTP, adapta dados para os casos de uso.
 - **Infra:** Implementação de repositórios, unit of work, integrações externas, persistência.
@@ -410,20 +412,23 @@ O padrão **Unit of Work** mantém uma lista de objetos afetados por uma transa�
 
 ### 10.2. Quando Utilizar
 
-O Unit of Work deve ser utilizado em cenários onde:
+O Unit of Work deve ser utilizado **EXCLUSIVAMENTE** em cenários onde é necessário salvar **MAIS DE 1 AGREGADO** ao mesmo tempo, garantindo atomicidade entre as operações:
 
-- **Operações Atômicas Complexas**: Quando uma operação de negócio requer múltiplas escritas no banco que devem ser executadas como uma única transação
 - **Múltiplos Agregados**: Quando a operação envolve modificações em diferentes agregados que precisam ser consistentes
-- **Rollback Automático**: Quando é necessário garantir que falhas em qualquer etapa revertam todas as operações
 - **Operações de Transferência**: Como transferências entre contas, que envolvem débito em uma conta e crédito em outra
+- **Operações Atômicas Complexas**: Quando uma operação de negócio requer múltiplas escritas no banco que devem ser executadas como uma única transação
+- **Rollback Automático**: Quando é necessário garantir que falhas em qualquer etapa revertam todas as operações
 
-### 10.3. Quando NÃO Utilizar
+### 10.3. Quando NÃO Utilizar - REGRA FUNDAMENTAL
+
+**SEMPRE que for necessário salvar APENAS 1 AGREGADO, utilize Repository que é mais simples.**
 
 Evite Unit of Work quando:
 
-- **Operações Simples**: Para operações que envolvem apenas um agregado
+- **Operações com Um Único Agregado**: Para operações que envolvem apenas um agregado (use Repository diretamente)
 - **Apenas Leitura**: Para operações de consulta (use Query Handlers)
 - **Operações Independentes**: Quando não há necessidade de atomicidade entre operações
+- **CRUD Simples**: Criação, atualização ou remoção de uma única entidade
 
 ### 10.4. Implementação
 
