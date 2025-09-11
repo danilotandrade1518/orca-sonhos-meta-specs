@@ -34,7 +34,7 @@ Central de documentação para o projeto OrçaSonhos, uma plataforma de gestão 
 2. Veja [`business/03_funcionalidades_core.md`](./business/03_funcionalidades_core.md) para roadmap
 
 ### Arquitetos/Tech Leads
-1. [`technical/01_visao-arquitetural-backend.md`](./technical/01_visao-arquitetural-backend.md) - Backend architecture
+1. [`technical/backend-architecture/index.md`](./technical/backend-architecture/index.md) - Backend architecture
 2. [`technical/02_visao-arquitetural-frontend.md`](./technical/02_visao-arquitetural-frontend.md) - Frontend architecture
 3. [`adr/index.md`](./adr/index.md) - Decisões arquiteturais e evolução técnica
 
