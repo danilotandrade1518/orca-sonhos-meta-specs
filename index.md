@@ -6,15 +6,17 @@ Central de documentação para o projeto OrçaSonhos, uma plataforma de gestão 
 
 ### [`business/`](./business/index.md) 
 **Documentação de Negócio**
-- Visão de produto, perfil de clientes e funcionalidades core
-- Conceitos centrais: orçamentos, transações, metas, categorias
-- Personas, casos de uso e análise competitiva
+- **[`product-vision/`](./business/product-vision/)** - Visão de produto e conceitos fundamentais
+- **[`customer-profile/`](./business/customer-profile/)** - Personas, perfis de clientes e análise de mercado
+- **[Funcionalidades Core](./business/03_funcionalidades_core.md)** - Features principais e roadmap
 
 ### [`technical/`](./technical/index.md)
 **Documentação Técnica** 
-- Arquitetura backend (Clean Architecture + DDD) e frontend (Angular em camadas)
-- Stack tecnológico, estratégia de testes e padrões de código
-- Configurações offline-first, mobile-first e autenticação Firebase
+- **[`backend-architecture/`](./technical/backend-architecture/)** - Clean Architecture + DDD, serviços e padrões
+- **[`frontend-architecture/`](./technical/frontend-architecture/)** - Angular em camadas, UI system e estratégias
+- **[`code-standards/`](./technical/code-standards/)** - Padrões de código, convenções e boas práticas
+- **[Stack Tecnológico](./technical/03_stack_tecnologico.md)** - Ferramentas e tecnologias utilizadas
+- **[Estratégia de Testes](./technical/04_estrategia_testes.md)** - Testes unitários, integração e E2E
 
 ### [`adr/`](./adr/index.md)
 **Architecture Decision Records**
@@ -25,18 +27,20 @@ Central de documentação para o projeto OrçaSonhos, uma plataforma de gestão 
 ## 🚀 Para Começar
 
 ### Novos Desenvolvedores
-1. Leia [`business/01_visao_produto.md`](./business/01_visao_produto.md) para entender o domínio
+1. Explore [`business/product-vision/`](./business/product-vision/) para entender o domínio
 2. Consulte [`technical/03_stack_tecnologico.md`](./technical/03_stack_tecnologico.md) para setup
-3. Revise [`technical/05_padroes_codigo.md`](./technical/05_padroes_codigo.md) para convenções
+3. Revise [`technical/code-standards/`](./technical/code-standards/) para convenções e padrões
 
 ### Product Managers  
-1. Explore [`business/02_perfil_cliente.md`](./business/02_perfil_cliente.md) para personas
-2. Veja [`business/03_funcionalidades_core.md`](./business/03_funcionalidades_core.md) para roadmap
+1. Veja [`business/customer-profile/`](./business/customer-profile/) para personas e perfis
+2. Consulte [`business/03_funcionalidades_core.md`](./business/03_funcionalidades_core.md) para roadmap
+3. Explore [`business/product-vision/`](./business/product-vision/) para conceitos de produto
 
 ### Arquitetos/Tech Leads
-1. [`technical/backend-architecture/index.md`](./technical/backend-architecture/index.md) - Backend architecture
-2. [`technical/02_visao-arquitetural-frontend.md`](./technical/02_visao-arquitetural-frontend.md) - Frontend architecture
+1. [`technical/backend-architecture/`](./technical/backend-architecture/) - Arquitetura backend completa
+2. [`technical/frontend-architecture/`](./technical/frontend-architecture/) - Arquitetura frontend detalhada
 3. [`adr/index.md`](./adr/index.md) - Decisões arquiteturais e evolução técnica
+4. [`technical/04_estrategia_testes.md`](./technical/04_estrategia_testes.md) - Estratégia de testes
 
 ## 🎯 Conceitos-Chave do OrçaSonhos
 
@@ -57,5 +61,5 @@ Esta documentação deve ser atualizada sempre que houver:
 ---
 
 **Projeto:** OrçaSonhos  
-**Última atualização:** 2025-09-08  
+**Última atualização:** 2025-09-11  
 **Status:** Documentação base para desenvolvimento MVP
