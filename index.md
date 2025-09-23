@@ -24,6 +24,11 @@ Central de documentação para o projeto OrçaSonhos, uma plataforma de gestão 
 - Stack de backend, banco de dados, infraestrutura e padrões de API
 - Evolução das escolhas técnicas com contexto e justificativas
 
+## 📦 Repositórios do Projeto
+
+- **Frontend**: [orca-sonhos-front](https://github.com/danilotandrade1518/orca-sonhos-front)
+- **Backend**: [orca-sonhos-back](https://github.com/danilotandrade1518/orca-sonhos-back)
+
 ## 🚀 Para Começar
 
 ### Novos Desenvolvedores
