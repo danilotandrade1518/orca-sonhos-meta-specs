@@ -9,7 +9,121 @@
 
 ## Arquitetura de Persistência
 
-### Armazenamento Local (IndexedDB)
+### Armazenamento Local (IndexedDB + Dexie)
+
+**Biblioteca Utilizada:** [Dexie](https://dexie.org/) - wrapper TypeScript para IndexedDB que simplifica operações e melhora a experiência de desenvolvimento.
+
+**Por que Dexie?**
+- Abstração simples e intuitiva sobre IndexedDB
+- TypeScript nativo com tipagem forte
+- Suporte a queries avançadas (where, orderBy, filter)
+- Manejo automático de transações e conexões
+- Hooks para observabilidade e debugging
+- Suporte a migrações de schema
+
+#### Schema e Configuração
+
+```typescript
+// infra/storage/dexie-database.ts
+import Dexie, { Table } from 'dexie';
+
+export interface Budget {
+  id: string;
+  name: string;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  syncStatus: 'synced' | 'pending' | 'failed';
+}
+
+export interface Account {
+  id: string;
+  budgetId: string;
+  name: string;
+  balance: number;
+  updatedAt: Date;
+  syncStatus: 'synced' | 'pending' | 'failed';
+}
+
+export interface Transaction {
+  id: string;
+  accountId: string;
+  amount: number;
+  description: string;
+  category: string;
+  date: Date;
+  createdAt: Date;
+  syncStatus: 'synced' | 'pending' | 'failed';
+}
+
+export interface Goal {
+  id: string;
+  budgetId: string;
+  title: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: Date;
+  updatedAt: Date;
+  syncStatus: 'synced' | 'pending' | 'failed';
+}
+
+export interface CachedQuery<T = unknown> {
+  queryKey: string;
+  data: T;
+  cachedAt: Date;
+  expiresAt: Date;
+  etag?: string;
+}
+
+export interface QueuedCommand {
+  id: string;
+  type: string;
+  payload: Record<string, unknown>;
+  idempotencyKey: string;
+  entityId?: string;
+  createdAt: Date;
+  attempts: number;
+  status: 'pending' | 'processing' | 'failed' | 'completed';
+}
+
+export class OrçaSonhosDatabase extends Dexie {
+  budgets!: Table<Budget>;
+  accounts!: Table<Account>;
+  transactions!: Table<Transaction>;
+  goals!: Table<Goal>;
+  queryCache!: Table<CachedQuery>;
+  commandsQueue!: Table<QueuedCommand>;
+
+  constructor() {
+    super('OrçaSonhosDB');
+
+    this.version(1).stores({
+      budgets: 'id, userId, syncStatus, updatedAt',
+      accounts: 'id, budgetId, syncStatus, updatedAt',
+      transactions: 'id, accountId, syncStatus, date, createdAt',
+      goals: 'id, budgetId, syncStatus, targetDate, updatedAt',
+      queryCache: 'queryKey, expiresAt',
+      commandsQueue: 'id, status, createdAt, attempts'
+    });
+
+    // Hooks para auditoria e debugging
+    this.budgets.hook('creating', (primKey, obj, trans) => {
+      obj.createdAt = new Date();
+      obj.updatedAt = new Date();
+      obj.syncStatus = 'pending';
+    });
+
+    this.budgets.hook('updating', (modifications, primKey, obj, trans) => {
+      modifications.updatedAt = new Date();
+      modifications.syncStatus = 'pending';
+    });
+  }
+}
+
+export const db = new OrçaSonhosDatabase();
+```
+
+#### Adapter Implementation com Dexie
 
 ```typescript
 // infra/storage/local-store.adapter.ts
@@ -19,11 +133,11 @@ export interface ILocalStorePort {
   setEntity<T>(storeName: string, id: string, entity: T): Promise<void>;
   deleteEntity(storeName: string, id: string): Promise<void>;
   getAllEntities<T>(storeName: string): Promise<T[]>;
-  
+
   // Query cache
   getCachedQuery<T>(queryKey: string): Promise<CachedQuery<T> | null>;
   setCachedQuery<T>(queryKey: string, data: T, ttl?: number): Promise<void>;
-  
+
   // Commands queue
   enqueueCommand(command: QueuedCommand): Promise<void>;
   dequeueCommand(id: string): Promise<void>;
@@ -31,65 +145,155 @@ export interface ILocalStorePort {
 }
 
 @Injectable({ providedIn: 'root' })
-export class IndexedDBAdapter implements ILocalStorePort {
-  private db: IDBDatabase | null = null;
-  
-  constructor() {
-    this.initializeDB();
-  }
-
-  private async initializeDB(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open('OrçaSonhosDB', 1);
-      
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        this.db = request.result;
-        resolve();
-      };
-      
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        
-        // Store para entities por agregado
-        this.createStoreIfNotExists(db, 'budgets');
-        this.createStoreIfNotExists(db, 'accounts'); 
-        this.createStoreIfNotExists(db, 'transactions');
-        this.createStoreIfNotExists(db, 'goals');
-        
-        // Store para cache de queries
-        this.createStoreIfNotExists(db, 'query_cache');
-        
-        // Store para fila de comandos
-        this.createStoreIfNotExists(db, 'commands_queue');
-      };
-    });
-  }
+export class DexieAdapter implements ILocalStorePort {
+  constructor(private db: OrçaSonhosDatabase = db) {}
 
   async getEntity<T>(storeName: string, id: string): Promise<T | null> {
-    if (!this.db) await this.initializeDB();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([storeName], 'readonly');
-      const store = transaction.objectStore(storeName);
-      const request = store.get(id);
-      
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error);
-    });
+    const table = this.getTable(storeName);
+    const entity = await table.get(id);
+    return (entity as T) || null;
   }
 
   async setEntity<T>(storeName: string, id: string, entity: T): Promise<void> {
-    if (!this.db) await this.initializeDB();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([storeName], 'readwrite');
-      const store = transaction.objectStore(storeName);
-      const request = store.put({ id, ...entity }, id);
-      
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    const table = this.getTable(storeName);
+    await table.put({ ...entity, id });
+  }
+
+  async deleteEntity(storeName: string, id: string): Promise<void> {
+    const table = this.getTable(storeName);
+    await table.delete(id);
+  }
+
+  async getAllEntities<T>(storeName: string): Promise<T[]> {
+    const table = this.getTable(storeName);
+    return table.toArray() as Promise<T[]>;
+  }
+
+  async getCachedQuery<T>(queryKey: string): Promise<CachedQuery<T> | null> {
+    const cached = await this.db.queryCache.get(queryKey);
+
+    if (!cached) return null;
+
+    // Verificar se expirou
+    if (cached.expiresAt < new Date()) {
+      await this.db.queryCache.delete(queryKey);
+      return null;
+    }
+
+    return cached as CachedQuery<T>;
+  }
+
+  async setCachedQuery<T>(
+    queryKey: string,
+    data: T,
+    ttl: number = 5 * 60 * 1000
+  ): Promise<void> {
+    const cachedQuery: CachedQuery<T> = {
+      queryKey,
+      data,
+      cachedAt: new Date(),
+      expiresAt: new Date(Date.now() + ttl)
+    };
+
+    await this.db.queryCache.put(cachedQuery);
+  }
+
+  async enqueueCommand(command: QueuedCommand): Promise<void> {
+    await this.db.commandsQueue.add(command);
+  }
+
+  async dequeueCommand(id: string): Promise<void> {
+    await this.db.commandsQueue.delete(id);
+  }
+
+  async getPendingCommands(): Promise<QueuedCommand[]> {
+    return this.db.commandsQueue
+      .where('status')
+      .equals('pending')
+      .orderBy('createdAt')
+      .toArray();
+  }
+
+  private getTable(storeName: string) {
+    switch (storeName) {
+      case 'budgets': return this.db.budgets;
+      case 'accounts': return this.db.accounts;
+      case 'transactions': return this.db.transactions;
+      case 'goals': return this.db.goals;
+      default: throw new Error(`Unknown store: ${storeName}`);
+    }
+  }
+}
+```
+
+#### Queries Avançadas com Dexie
+
+```typescript
+// infra/repositories/TransactionRepository.ts
+@Injectable({ providedIn: 'root' })
+export class LocalTransactionRepository {
+  constructor(private db: OrçaSonhosDatabase = db) {}
+
+  async getTransactionsByAccount(
+    accountId: string,
+    limit?: number
+  ): Promise<Transaction[]> {
+    let query = this.db.transactions
+      .where('accountId')
+      .equals(accountId)
+      .orderBy('date')
+      .reverse();
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    return query.toArray();
+  }
+
+  async getTransactionsByDateRange(
+    accountId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<Transaction[]> {
+    return this.db.transactions
+      .where('accountId')
+      .equals(accountId)
+      .and(transaction =>
+        transaction.date >= startDate &&
+        transaction.date <= endDate
+      )
+      .orderBy('date')
+      .toArray();
+  }
+
+  async getTransactionsByCategory(
+    budgetId: string,
+    category: string
+  ): Promise<Transaction[]> {
+    // Join-like query usando Dexie
+    const accounts = await this.db.accounts
+      .where('budgetId')
+      .equals(budgetId)
+      .toArray();
+
+    const accountIds = accounts.map(acc => acc.id);
+
+    return this.db.transactions
+      .where('accountId')
+      .anyOf(accountIds)
+      .and(transaction => transaction.category === category)
+      .orderBy('date')
+      .reverse()
+      .toArray();
+  }
+
+  async getPendingSyncTransactions(): Promise<Transaction[]> {
+    return this.db.transactions
+      .where('syncStatus')
+      .equals('pending')
+      .orderBy('createdAt')
+      .toArray();
   }
 }
 ```
@@ -465,6 +669,23 @@ export class SyncService {
 
 ## Resolução de Conflitos
 
+### Estratégia: Last-Write-Wins (LWW)
+
+**Abordagem Escolhida:** Last-Write-Wins baseado em timestamp `updatedAt`
+
+**Justificativa para MVP:**
+- Simplicidade de implementação e manutenção
+- Comportamento previsível para usuários finais
+- Adequado para dados financeiros pessoais (baixa concorrência)
+- Menor complexidade de UI para resolução manual
+- Facilita debugging e auditoria
+
+**Como Funciona:**
+1. Toda entidade possui campo `updatedAt` com timestamp preciso
+2. Em caso de conflito, a versão com `updatedAt` mais recente prevalece
+3. Dados "perdedores" são mantidos em log de auditoria para recuperação
+4. Interface opcional para revisão de conflitos em casos críticos
+
 ### Strategy para Conflitos 409/412
 
 ```typescript
@@ -516,15 +737,42 @@ export class ConflictResolutionService {
     localEntity: T & { updatedAt: Date },
     serverEntity: T & { updatedAt: Date }
   ): ConflictResolution<T> {
-    // Comparar timestamps - mais recente ganha
-    if (localEntity.updatedAt > serverEntity.updatedAt) {
+    // Last-Write-Wins: Comparar timestamps - mais recente ganha
+    const localTime = localEntity.updatedAt.getTime();
+    const serverTime = serverEntity.updatedAt.getTime();
+
+    if (localTime > serverTime) {
+      // Log da entidade "perdedora" para auditoria
+      this.auditService.logConflictResolution({
+        winnerSource: 'client',
+        winnerEntity: localEntity,
+        loserEntity: serverEntity,
+        conflictType: 'concurrent_modification',
+        resolvedAt: new Date()
+      });
+
       return {
         strategy: 'client_wins',
         resolvedEntity: localEntity
       };
-    } else {
+    } else if (serverTime > localTime) {
+      // Log da entidade "perdedora" para auditoria
+      this.auditService.logConflictResolution({
+        winnerSource: 'server',
+        winnerEntity: serverEntity,
+        loserEntity: localEntity,
+        conflictType: 'concurrent_modification',
+        resolvedAt: new Date()
+      });
+
       return {
-        strategy: 'server_wins', 
+        strategy: 'server_wins',
+        resolvedEntity: serverEntity
+      };
+    } else {
+      // Timestamps idênticos - preferir servidor (tie-breaker)
+      return {
+        strategy: 'server_wins',
         resolvedEntity: serverEntity
       };
     }
