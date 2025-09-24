@@ -1,5 +1,21 @@
 # Visão Geral da Arquitetura Frontend
 
+---
+**Metadados Estruturados para IA/RAG:**
+```yaml
+document_type: "technical_architecture"
+domain: "frontend_architecture"
+audience: ["frontend_developers", "architects", "tech_leads"]
+complexity: "advanced"
+tags: ["angular", "spa", "clean_architecture", "typescript", "architecture_patterns"]
+related_docs: ["domain-ontology.md", "directory-structure.md", "layer-responsibilities.md"]
+ai_context: "Frontend architecture overview for Angular-based OrçaSonhos application"
+technologies: ["Angular", "TypeScript", "RxJS", "Angular Material", "Firebase"]
+patterns: ["Clean Architecture", "Hexagonal Architecture", "CQRS", "Offline-First"]
+last_updated: "2025-01-24"
+```
+---
+
 ## Decisão Arquitetural Principal
 
 O OrçaSonhos frontend é uma **Single Page Application (SPA)** em Angular com TypeScript, estruturada seguindo **Clean Architecture / Hexagonal Architecture** aplicada ao contexto frontend.

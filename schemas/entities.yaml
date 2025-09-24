@@ -1,0 +1,608 @@
+# 📋 OrçaSonhos - Domain Entity Schemas
+# Schemas estruturados para otimização de IA/RAG
+
+metadata:
+  version: "1.0.0"
+  description: "Schemas JSON/YAML das entidades principais do domínio OrçaSonhos"
+  created: "2025-01-24"
+  ai_optimized: true
+  tags: ["schema", "entities", "domain", "validation", "contracts"]
+
+# =============================================================================
+# AGREGADOS PRINCIPAIS
+# =============================================================================
+
+Budget:
+  type: "aggregate_root"
+  description: "Orçamento - Container virtual que agrupa transações, metas e categorias"
+  table: "budgets"
+
+  properties:
+    id:
+      type: "string"
+      format: "uuid"
+      description: "Identificador único do orçamento"
+      example: "550e8400-e29b-41d4-a716-446655440000"
+
+    name:
+      type: "string"
+      minLength: 1
+      maxLength: 100
+      description: "Nome descritivo do orçamento"
+      examples: ["Casa", "Pessoal", "Viagem Europa", "Negócio"]
+
+    description:
+      type: "string"
+      maxLength: 500
+      nullable: true
+      description: "Descrição detalhada do orçamento"
+
+    type:
+      type: "string"
+      enum: ["personal", "shared", "family", "business"]
+      description: "Tipo de orçamento"
+      semantic_mapping:
+        personal: "Orçamento individual de um usuário"
+        shared: "Orçamento compartilhado entre múltiplos usuários"
+        family: "Orçamento familiar para gestão doméstica"
+        business: "Orçamento para pequenos negócios"
+
+    owner_id:
+      type: "string"
+      format: "uuid"
+      description: "ID do usuário criador/proprietário do orçamento"
+
+    participants:
+      type: "array"
+      items:
+        type: "string"
+        format: "uuid"
+      description: "Lista de IDs de usuários com acesso ao orçamento"
+      minItems: 1
+
+    is_active:
+      type: "boolean"
+      default: true
+      description: "Indica se o orçamento está ativo para uso"
+
+    created_at:
+      type: "string"
+      format: "date-time"
+      description: "Data/hora de criação"
+
+    updated_at:
+      type: "string"
+      format: "date-time"
+      description: "Data/hora da última atualização"
+
+  relationships:
+    has_many:
+      - entity: "Transaction"
+        foreign_key: "budget_id"
+      - entity: "Goal"
+        foreign_key: "budget_id"
+      - entity: "Category"
+        foreign_key: "budget_id"
+      - entity: "Envelope"
+        foreign_key: "budget_id"
+    belongs_to:
+      - entity: "User"
+        foreign_key: "owner_id"
+    belongs_to_many:
+      - entity: "User"
+        through: "budget_participants"
+
+  business_rules:
+    - rule: "budget_must_have_participants"
+      description: "Budget deve ter pelo menos um participante"
+      validation: "participants.length >= 1"
+
+    - rule: "personal_budget_single_participant"
+      description: "Orçamento pessoal deve ter apenas um participante"
+      validation: "type !== 'personal' || participants.length === 1"
+
+    - rule: "owner_must_be_participant"
+      description: "Proprietário deve estar na lista de participantes"
+      validation: "participants.includes(owner_id)"
+
+# -----------------------------------------------------------------------------
+
+Transaction:
+  type: "aggregate_root"
+  description: "Transação - Registro de entrada ou saída de dinheiro"
+  table: "transactions"
+
+  properties:
+    id:
+      type: "string"
+      format: "uuid"
+      description: "Identificador único da transação"
+
+    budget_id:
+      type: "string"
+      format: "uuid"
+      description: "ID do orçamento ao qual a transação pertence"
+
+    category_id:
+      type: "string"
+      format: "uuid"
+      description: "ID da categoria da transação"
+
+    account_id:
+      type: "string"
+      format: "uuid"
+      nullable: true
+      description: "ID da conta que originou/recebeu a transação"
+
+    amount_cents:
+      type: "integer"
+      minimum: 1
+      description: "Valor da transação em centavos (sempre positivo)"
+      examples: [1500, 25000, 100]
+      semantic_note: "R$ 15,00 = 1500 centavos"
+
+    description:
+      type: "string"
+      minLength: 1
+      maxLength: 200
+      description: "Descrição da transação"
+      examples: ["Supermercado Extra", "Salário Janeiro", "Transferência para poupança"]
+
+    date:
+      type: "string"
+      format: "date"
+      description: "Data da transação (pode ser passada, presente ou futura)"
+      examples: ["2025-01-15", "2024-12-30", "2025-03-01"]
+
+    type:
+      type: "string"
+      enum: ["income", "expense", "transfer"]
+      description: "Tipo da transação"
+      semantic_mapping:
+        income: "Entrada de dinheiro (receita)"
+        expense: "Saída de dinheiro (despesa)"
+        transfer: "Movimentação entre contas/orçamentos"
+
+    status:
+      type: "string"
+      enum: ["scheduled", "completed", "overdue", "cancelled"]
+      description: "Status atual da transação"
+      semantic_mapping:
+        scheduled: "Agendada para o futuro, não afeta saldo atual"
+        completed: "Realizada, afeta o saldo atual"
+        overdue: "Data passada mas ainda não concluída"
+        cancelled: "Cancelada, não afeta saldo"
+
+    payment_method:
+      type: "string"
+      nullable: true
+      description: "Método de pagamento utilizado"
+      examples: ["Dinheiro", "Cartão Nubank", "PIX", "Débito Itaú"]
+
+    is_recurring:
+      type: "boolean"
+      default: false
+      description: "Indica se é uma transação recorrente"
+
+    recurrence_pattern:
+      type: "string"
+      nullable: true
+      enum: ["monthly", "weekly", "yearly", "custom"]
+      description: "Padrão de recorrência (se aplicável)"
+
+    created_by:
+      type: "string"
+      format: "uuid"
+      description: "ID do usuário que criou a transação"
+
+    created_at:
+      type: "string"
+      format: "date-time"
+      description: "Data/hora de criação"
+
+    updated_at:
+      type: "string"
+      format: "date-time"
+      description: "Data/hora da última atualização"
+
+  relationships:
+    belongs_to:
+      - entity: "Budget"
+        foreign_key: "budget_id"
+      - entity: "Category"
+        foreign_key: "category_id"
+      - entity: "Account"
+        foreign_key: "account_id"
+      - entity: "User"
+        foreign_key: "created_by"
+
+  business_rules:
+    - rule: "amount_must_be_positive"
+      description: "Valor deve ser positivo"
+      validation: "amount_cents > 0"
+
+    - rule: "scheduled_transactions_future_date"
+      description: "Transações agendadas devem ter data futura"
+      validation: "status !== 'scheduled' || date > today()"
+
+    - rule: "completed_transactions_impact_balance"
+      description: "Apenas transações concluídas afetam o saldo"
+      validation: "impacts_balance = (status === 'completed')"
+
+# -----------------------------------------------------------------------------
+
+Goal:
+  type: "aggregate_root"
+  description: "Meta - Objetivo financeiro com valor-alvo e prazo"
+  table: "goals"
+
+  properties:
+    id:
+      type: "string"
+      format: "uuid"
+      description: "Identificador único da meta"
+
+    budget_id:
+      type: "string"
+      format: "uuid"
+      description: "ID do orçamento ao qual a meta pertence"
+
+    name:
+      type: "string"
+      minLength: 1
+      maxLength: 100
+      description: "Nome da meta (específico e claro)"
+      examples: ["Viagem para Europa", "Comprar carro", "Reserva de emergência"]
+
+    description:
+      type: "string"
+      maxLength: 500
+      nullable: true
+      description: "Descrição detalhada da meta"
+
+    target_amount_cents:
+      type: "integer"
+      minimum: 100
+      description: "Valor-alvo da meta em centavos"
+      examples: [2500000, 1500000, 500000]
+      semantic_note: "R$ 25.000,00 = 2500000 centavos"
+
+    current_amount_cents:
+      type: "integer"
+      minimum: 0
+      default: 0
+      description: "Valor já acumulado para a meta em centavos"
+
+    target_date:
+      type: "string"
+      format: "date"
+      description: "Data-alvo para alcançar a meta"
+
+    priority:
+      type: "string"
+      enum: ["low", "medium", "high", "critical"]
+      default: "medium"
+      description: "Prioridade da meta"
+
+    category:
+      type: "string"
+      enum: ["home", "travel", "education", "emergency", "vehicle", "health", "business", "other"]
+      description: "Categoria temática da meta"
+      semantic_mapping:
+        home: "Casa própria, reforma, mobília"
+        travel: "Viagens, turismo, intercâmbio"
+        education: "Cursos, faculdade, livros"
+        emergency: "Reserva de emergência"
+        vehicle: "Carro, moto, transporte"
+        health: "Plano de saúde, tratamentos"
+        business: "Investimentos, negócio próprio"
+        other: "Outras metas não categorizadas"
+
+    status:
+      type: "string"
+      enum: ["active", "completed", "paused", "cancelled"]
+      default: "active"
+      description: "Status atual da meta"
+
+    is_smart_goal:
+      type: "boolean"
+      default: true
+      description: "Indica se segue metodologia SMART"
+
+    monthly_contribution_cents:
+      type: "integer"
+      nullable: true
+      minimum: 0
+      description: "Valor sugerido de contribuição mensal"
+
+    created_at:
+      type: "string"
+      format: "date-time"
+      description: "Data/hora de criação"
+
+  relationships:
+    belongs_to:
+      - entity: "Budget"
+        foreign_key: "budget_id"
+    tracks_through:
+      - entity: "Transaction"
+        description: "Transações que contribuem para a meta"
+
+  computed_fields:
+    progress_percentage:
+      type: "number"
+      format: "float"
+      description: "Porcentagem de progresso (0-100)"
+      calculation: "(current_amount_cents / target_amount_cents) * 100"
+
+    remaining_amount_cents:
+      type: "integer"
+      description: "Valor restante para atingir a meta"
+      calculation: "target_amount_cents - current_amount_cents"
+
+    months_remaining:
+      type: "integer"
+      description: "Meses restantes até a data-alvo"
+      calculation: "months_between(today(), target_date)"
+
+    required_monthly_contribution:
+      type: "integer"
+      description: "Contribuição mensal necessária baseada no tempo restante"
+      calculation: "remaining_amount_cents / months_remaining"
+
+  business_rules:
+    - rule: "target_amount_positive"
+      description: "Valor-alvo deve ser positivo"
+      validation: "target_amount_cents > 0"
+
+    - rule: "current_not_exceed_target"
+      description: "Valor atual não pode exceder valor-alvo"
+      validation: "current_amount_cents <= target_amount_cents"
+
+    - rule: "target_date_future"
+      description: "Data-alvo deve ser futura para metas ativas"
+      validation: "status !== 'active' || target_date > today()"
+
+    - rule: "smart_goal_criteria"
+      description: "Meta SMART deve ter critérios específicos e mensuráveis"
+      validation: "!is_smart_goal || (name.length > 10 && target_amount_cents > 0 && target_date)"
+
+# -----------------------------------------------------------------------------
+
+Account:
+  type: "aggregate_root"
+  description: "Conta - Local onde o dinheiro está fisicamente armazenado"
+  table: "accounts"
+
+  properties:
+    id:
+      type: "string"
+      format: "uuid"
+      description: "Identificador único da conta"
+
+    budget_id:
+      type: "string"
+      format: "uuid"
+      description: "ID do orçamento ao qual a conta pertence"
+
+    name:
+      type: "string"
+      minLength: 1
+      maxLength: 100
+      description: "Nome descritivo da conta"
+      examples: ["Conta Corrente Itaú", "Carteira Física", "Conta Poupança", "Nubank"]
+
+    type:
+      type: "string"
+      enum: ["checking", "savings", "cash", "digital_wallet", "credit_card", "investment", "other"]
+      description: "Tipo da conta"
+      semantic_mapping:
+        checking: "Conta corrente bancária"
+        savings: "Conta poupança"
+        cash: "Dinheiro em espécie"
+        digital_wallet: "Carteira digital (PIX, PayPal, etc)"
+        credit_card: "Cartão de crédito"
+        investment: "Conta de investimentos"
+        other: "Outros tipos de conta"
+
+    balance_cents:
+      type: "integer"
+      description: "Saldo atual da conta em centavos (pode ser negativo)"
+      examples: [15000, -5000, 0]
+      semantic_note: "Valores negativos representam débitos/limites utilizados"
+
+    credit_limit_cents:
+      type: "integer"
+      nullable: true
+      minimum: 0
+      description: "Limite de crédito disponível (para cartões e contas com limite)"
+
+    is_active:
+      type: "boolean"
+      default: true
+      description: "Indica se a conta está ativa para uso"
+
+    institution:
+      type: "string"
+      nullable: true
+      maxLength: 100
+      description: "Nome da instituição financeira"
+      examples: ["Itaú", "Nubank", "Bradesco", "Inter"]
+
+    created_at:
+      type: "string"
+      format: "date-time"
+      description: "Data/hora de criação"
+
+  relationships:
+    belongs_to:
+      - entity: "Budget"
+        foreign_key: "budget_id"
+    has_many:
+      - entity: "Transaction"
+        foreign_key: "account_id"
+
+  computed_fields:
+    available_balance_cents:
+      type: "integer"
+      description: "Saldo disponível (saldo + limite de crédito)"
+      calculation: "balance_cents + (credit_limit_cents || 0)"
+
+    used_credit_percentage:
+      type: "number"
+      format: "float"
+      description: "Porcentagem do limite de crédito utilizado"
+      calculation: "credit_limit_cents ? (abs(min(balance_cents, 0)) / credit_limit_cents) * 100 : 0"
+
+  business_rules:
+    - rule: "credit_limit_non_negative"
+      description: "Limite de crédito não pode ser negativo"
+      validation: "credit_limit_cents === null || credit_limit_cents >= 0"
+
+    - rule: "credit_card_has_limit"
+      description: "Cartões de crédito devem ter limite definido"
+      validation: "type !== 'credit_card' || credit_limit_cents > 0"
+
+# =============================================================================
+# VALUE OBJECTS
+# =============================================================================
+
+Money:
+  type: "value_object"
+  description: "Objeto de valor para representar quantias monetárias"
+
+  properties:
+    cents:
+      type: "integer"
+      description: "Valor em centavos para evitar problemas de ponto flutuante"
+      examples: [1500, 25000, 0, -500]
+
+    currency:
+      type: "string"
+      default: "BRL"
+      enum: ["BRL", "USD", "EUR"]
+      description: "Código da moeda (ISO 4217)"
+
+  methods:
+    format_display:
+      return_type: "string"
+      description: "Formatação para exibição (R$ 15,00)"
+      examples: ["R$ 15,00", "R$ 250,00", "R$ 0,00"]
+
+    add:
+      parameter: "Money other"
+      return_type: "Money"
+      description: "Soma duas quantias monetárias"
+
+    subtract:
+      parameter: "Money other"
+      return_type: "Money"
+      description: "Subtrai duas quantias monetárias"
+
+    is_positive:
+      return_type: "boolean"
+      description: "Verifica se o valor é positivo"
+
+  business_rules:
+    - rule: "same_currency_operations"
+      description: "Operações matemáticas só entre mesma moeda"
+      validation: "add/subtract operations require same currency"
+
+# -----------------------------------------------------------------------------
+
+DatePeriod:
+  type: "value_object"
+  description: "Período de tempo com data início e fim"
+
+  properties:
+    start_date:
+      type: "string"
+      format: "date"
+      description: "Data de início do período"
+
+    end_date:
+      type: "string"
+      format: "date"
+      description: "Data de fim do período"
+
+  methods:
+    contains_date:
+      parameter: "string date"
+      return_type: "boolean"
+      description: "Verifica se uma data está dentro do período"
+
+    duration_days:
+      return_type: "integer"
+      description: "Duração do período em dias"
+
+  business_rules:
+    - rule: "end_after_start"
+      description: "Data fim deve ser posterior à data início"
+      validation: "end_date >= start_date"
+
+# =============================================================================
+# ENUMS E CONSTANTES
+# =============================================================================
+
+enums:
+  BudgetType:
+    values: ["personal", "shared", "family", "business"]
+    descriptions:
+      personal: "Orçamento individual"
+      shared: "Orçamento compartilhado"
+      family: "Orçamento familiar"
+      business: "Orçamento empresarial"
+
+  TransactionType:
+    values: ["income", "expense", "transfer"]
+    descriptions:
+      income: "Receita/Entrada"
+      expense: "Despesa/Saída"
+      transfer: "Transferência"
+
+  TransactionStatus:
+    values: ["scheduled", "completed", "overdue", "cancelled"]
+    descriptions:
+      scheduled: "Agendada"
+      completed: "Concluída"
+      overdue: "Atrasada"
+      cancelled: "Cancelada"
+
+  GoalStatus:
+    values: ["active", "completed", "paused", "cancelled"]
+    descriptions:
+      active: "Ativa"
+      completed: "Concluída"
+      paused: "Pausada"
+      cancelled: "Cancelada"
+
+  AccountType:
+    values: ["checking", "savings", "cash", "digital_wallet", "credit_card", "investment", "other"]
+    descriptions:
+      checking: "Conta Corrente"
+      savings: "Poupança"
+      cash: "Dinheiro"
+      digital_wallet: "Carteira Digital"
+      credit_card: "Cartão de Crédito"
+      investment: "Investimento"
+      other: "Outros"
+
+# =============================================================================
+# VALIDAÇÕES CROSS-ENTITY
+# =============================================================================
+
+cross_entity_rules:
+  - rule: "transaction_budget_consistency"
+    description: "Transação deve pertencer a orçamento ativo"
+    entities: ["Transaction", "Budget"]
+    validation: "transaction.budget_id exists && budget.is_active = true"
+
+  - rule: "goal_budget_consistency"
+    description: "Meta deve pertencer a orçamento ativo"
+    entities: ["Goal", "Budget"]
+    validation: "goal.budget_id exists && budget.is_active = true"
+
+  - rule: "account_transaction_consistency"
+    description: "Transação só pode usar conta do mesmo orçamento"
+    entities: ["Transaction", "Account"]
+    validation: "transaction.account_id is null || transaction.budget_id = account.budget_id"

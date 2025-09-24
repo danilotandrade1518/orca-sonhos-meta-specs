@@ -1,5 +1,21 @@
 # 📋 Índice de Documentação de Arquitetura - OrçaSonhos
 
+---
+**Metadados Estruturados para IA/RAG:**
+```yaml
+document_type: "architecture_decisions_index"
+domain: "architecture_governance"
+audience: ["architects", "developers", "tech_leads", "product_managers"]
+complexity: "intermediate"
+tags: ["adr", "architecture_decisions", "technical_decisions", "governance"]
+related_docs: ["domain-ontology.md", "technical/index.md"]
+ai_context: "Architecture Decision Records index for OrçaSonhos project governance"
+decision_count: 11
+chronological_range: "2024-2025"
+last_updated: "2025-01-24"
+```
+---
+
 Este diretório contém todos os Architecture Decision Records (ADRs) do projeto OrçaSonhos, organizados para auxiliar na compreensão das decisões arquiteturais e sua evolução.
 
 ## 📁 Documentos Disponíveis

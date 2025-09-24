@@ -1,5 +1,19 @@
 # Core Concepts - Conceitos Centrais
 
+---
+**Metadados Estruturados para IA/RAG:**
+```yaml
+document_type: "business_concepts"
+domain: "personal_finance"
+audience: ["developers", "product_managers", "business_analysts"]
+complexity: "intermediate"
+tags: ["core_concepts", "domain_model", "business_rules", "financial_management"]
+related_docs: ["domain-ontology.md", "use-cases.md", "mvp-scope.md"]
+ai_context: "Central domain concepts for OrçaSonhos financial management platform"
+last_updated: "2025-01-24"
+```
+---
+
 ## 🧭 Conceitos Fundamentais
 
 ### 💡 Orçamento (Budget)

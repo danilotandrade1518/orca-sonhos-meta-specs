@@ -24,6 +24,20 @@ Central de documentação para o projeto OrçaSonhos, uma plataforma de gestão 
 - Stack de backend, banco de dados, infraestrutura e padrões de API
 - Evolução das escolhas técnicas com contexto e justificativas
 
+## 🧠 Documentação Semântica para IA/RAG
+
+### Recursos Otimizados para IA
+- **[Domain Ontology](./domain-ontology.md)** - Taxonomia formal e relações semânticas
+- **[Domain Glossary](./domain-glossary.md)** - Glossário completo com 45+ termos definidos
+- **[Entity Schemas](./schemas/entities.yaml)** - Schemas estruturados das entidades principais
+
+### Metadados Estruturados
+Todos os documentos principais agora incluem metadados YAML para otimizar:
+- Contexto semântico para sistemas de IA
+- Tags estruturadas para busca e categorização
+- Referências cruzadas entre documentos
+- Audiência-alvo e complexidade dos conteúdos
+
 ## 📦 Repositórios do Projeto
 
 - **Frontend**: [orca-sonhos-front](https://github.com/danilotandrade1518/orca-sonhos-front)
