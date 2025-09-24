@@ -1,5 +1,12 @@
 # Offline-First e Sincronização
 
+> ⚠️ **Status Atual**: **POSTERGADO PARA PÓS-MVP**
+> Esta funcionalidade foi temporariamente adiada para focar no lançamento do MVP.
+> Ver: [ADR 0011 - Postergação Offline-First](../../adr/0011-postergacao-offline-first-mvp.md)
+>
+> **Estratégia MVP**: Online-first com HttpClient direto e cache HTTP básico
+> **Retomada**: Após validação do product-market fit e > 1.000 usuários ativos
+
 ## Objetivos da Strategy
 
 - **Funcionamento essencial** do app sem conexão de internet

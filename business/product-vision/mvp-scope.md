@@ -14,6 +14,7 @@
 - ✅ Compartilhamento familiar simplificado
 
 ### Funcionalidades Pós-MVP:
+- 📴 **Estratégia Offline-First** (IndexedDB, sincronização, resolução de conflitos)
 - 📱 Notificações push e por email
 - 🎮 Gamificação e elementos de engajamento
 - 📚 Conteúdo educativo financeiro

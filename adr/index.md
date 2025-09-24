@@ -55,6 +55,12 @@ Este diretório contém todos os Architecture Decision Records (ADRs) do projeto
 - Implementação de autenticação para aplicações SPA
 - Integração com Azure B2C
 
+### [`0011-postergacao-offline-first-mvp.md`](./0011-postergacao-offline-first-mvp.md)
+**Postergação da Estratégia Offline-First para Pós-MVP**
+- Decisão de focar em online-first para MVP
+- Critérios para retomar implementação offline-first
+- Estratégia de migração futura
+
 ## 🎯 Como Usar Este Índice
 
 ### Para Desenvolvedores
@@ -67,8 +73,8 @@ Use os ADRs para entender evolução das decisões arquiteturais e contexto de c
 Veja 0007 para compreender a arquitetura de infraestrutura na Azure e suas justificativas.
 
 ### Para Product Managers
-Consulte 0009 para entender decisões de escopo do MVP e features postergadas.
+Consulte 0009 e 0011 para entender decisões de escopo do MVP e features postergadas, incluindo offline-first.
 
 ---
 
-**Última atualização:** 2025-09-08
+**Última atualização:** 2025-09-24

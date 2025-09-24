@@ -25,7 +25,7 @@ Contratos de API, Ports/Adapters, HttpClient customizado e alinhamento com endpo
 Firebase Auth com fluxo redirect, tokens em memória, guardas de rota e feature flags de desenvolvimento
 
 ### **[Offline Strategy](./offline-strategy.md)**
-Offline-first com IndexedDB, fila de comandos, sincronização e resolução de conflitos
+**[POSTERGADO PARA PÓS-MVP]** Offline-first com IndexedDB, fila de comandos, sincronização e resolução de conflitos
 
 ## 🎨 UI e Design System
 
