@@ -38,6 +38,44 @@ Todos os documentos principais agora incluem metadados YAML para otimizar:
 - Referências cruzadas entre documentos
 - Audiência-alvo e complexidade dos conteúdos
 
+## 🔧 Manutenção da Documentação
+
+### Sistema Híbrido de Manutenção
+A documentação OrçaSonhos utiliza uma abordagem híbrida combinando orientações inteligentes para IA (80%) com scripts de validação automatizada (20%):
+
+#### **📘 Guias para IA e Humanos**
+- **[Documentation Maintenance Guide](./documentation-maintenance-guide.md)** - Guia completo de manutenção
+- **[Propagation Matrix](./maintenance/propagation-matrix.md)** - Matriz de propagação semântica
+- **[Templates](./templates/)** - Templates padronizados para diferentes tipos de documentos
+
+#### **🔍 Scripts de Validação Automatizada**
+```bash
+# Validar metadados YAML
+./scripts/validation/validate-metadata.sh
+
+# Verificar links internos
+./scripts/validation/check-cross-references.sh
+
+# Atualizar timestamps
+./scripts/validation/update-timestamps.sh [--dry-run] [--force]
+
+# Verificar estrutura de diretórios
+./scripts/validation/verify-structure.sh
+```
+
+#### **📋 Templates Disponíveis**
+- **[Business Document](./templates/business-document.template.md)** - Para conceitos e análises de negócio
+- **[Technical Document](./templates/technical-document.template.md)** - Para documentação técnica e arquitetura
+- **[ADR Template](./templates/adr-template.md)** - Para Architecture Decision Records
+- **[Schema Template](./templates/schema-template.yaml)** - Para schemas de entidades
+
+### **Fluxo de Manutenção Recomendado**
+
+1. **Para Mudanças Rotineiras**: Consultar o [Maintenance Guide](./documentation-maintenance-guide.md)
+2. **Para Validações**: Executar scripts de validação periodicamente
+3. **Para Novos Documentos**: Usar templates apropriados
+4. **Para Consistência**: Seguir a [Propagation Matrix](./maintenance/propagation-matrix.md)
+
 ## 📦 Repositórios do Projeto
 
 - **Frontend**: [orca-sonhos-front](https://github.com/danilotandrade1518/orca-sonhos-front)

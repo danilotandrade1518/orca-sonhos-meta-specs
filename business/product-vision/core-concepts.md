@@ -1,17 +1,21 @@
 # Core Concepts - Conceitos Centrais
 
 ---
+
 **Metadados Estruturados para IA/RAG:**
+
 ```yaml
 document_type: "business_concepts"
 domain: "personal_finance"
 audience: ["developers", "product_managers", "business_analysts"]
 complexity: "intermediate"
-tags: ["core_concepts", "domain_model", "business_rules", "financial_management"]
+tags:
+  ["core_concepts", "domain_model", "business_rules", "financial_management"]
 related_docs: ["domain-ontology.md", "use-cases.md", "mvp-scope.md"]
 ai_context: "Central domain concepts for OrçaSonhos financial management platform"
 last_updated: "2025-01-24"
 ```
+
 ---
 
 ## 🧭 Conceitos Fundamentais
@@ -26,6 +30,13 @@ last_updated: "2025-01-24"
   - Transações
   - Metas vinculadas
   - Saldo e controle por envelope
+
+**Exemplos Práticos por Persona:**
+
+- **Ana**: "Orçamento Casa" (compartilhado) - R$ 8.000/mês para despesas familiares
+- **Carlos**: "Orçamento Pessoal" - R$ 4.500/mês para gastos individuais e metas
+- **Roberto & Maria**: "Orçamento Família" + "Orçamento Aposentadoria" - múltiplos contextos
+- **Júlia**: "Orçamento PF" + "Orçamento PJ" - separação pessoal/profissional
 
 #### 👥 Compartilhamento Simplificado
 
@@ -77,33 +88,45 @@ last_updated: "2025-01-24"
   - Prazo desejado
   - Aportes manuais
 
+**Exemplos Práticos por Persona:**
+
+- **Ana**: "Casa Própria - R$ 200.000 em 5 anos" (R$ 3.333/mês)
+- **Carlos**: "Intercâmbio Europa - R$ 25.000 em 2 anos" (R$ 1.042/mês)
+- **Roberto & Maria**: "Faculdade dos Filhos - R$ 300.000 em 10 anos" (R$ 2.500/mês)
+- **Júlia**: "Equipamentos do Negócio - R$ 15.000 em 6 meses" (R$ 2.500/mês)
+
 #### 🎯 Metodologia SMART para Metas
 
 As metas no OrçaSonhos seguem a metodologia **SMART** para garantir objetivos realistas e alcançáveis:
 
 **S - Específica (Specific)**
+
 - Nome claro da meta (ex: "Viagem para Europa", não "Viajar")
 - Descrição detalhada do objetivo
 - Finalidade bem definida
 
-**M - Mensurável (Measurable)**  
+**M - Mensurável (Measurable)**
+
 - Valor total necessário definido
 - Progresso percentual visual
 - Histórico de aportes e evolução
 - Métricas claras de acompanhamento
 
 **A - Atingível (Achievable)**
+
 - Sistema sugere valor mensal baseado na renda/gastos disponíveis
 - Alerta se meta está muito ambiciosa para o prazo definido
 - Sugestão de ajustes realistas no valor ou prazo
 
 **R - Relevante (Relevant)**
+
 - Vinculada a um orçamento específico
 - Categorizada por tipo (casa, educação, lazer, emergência, etc.)
 - Permite priorização entre múltiplas metas
 - Alinhada com objetivos pessoais/familiares
 
 **T - Temporal (Time-bound)**
+
 - Data limite claramente definida
 - Cálculo automático de aportes necessários por mês
 - Alertas de progresso (atrasado, no prazo, adiantado)
@@ -172,5 +195,6 @@ O OrçaSonhos permite **gerenciar cartões de crédito de forma integrada ao con
 ---
 
 **Próximos tópicos:**
+
 - **[Use Cases](./use-cases.md)** - Casos de uso prioritários
 - **[MVP Scope](./mvp-scope.md)** - Escopo do MVP

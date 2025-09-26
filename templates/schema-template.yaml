@@ -1,0 +1,406 @@
+# [Entity Name] Schema Template
+# Schema estruturado para entidade do domínio OrçaSonhos
+
+metadata:
+  template_version: "1.0.0"
+  created_date: "YYYY-MM-DD"
+  description: "Schema template for OrçaSonhos domain entities"
+  ai_optimized: true
+  tags: ["template", "schema", "domain", "entity"]
+
+# =============================================================================
+# ENTITY DEFINITION
+# =============================================================================
+
+EntityName:
+  type: "aggregate_root|entity|value_object"
+  description: "[Clear description of what this entity represents in business terms]"
+  table: "[database_table_name]" # If applicable
+
+  # Core Properties
+  properties:
+    id:
+      type: "string"
+      format: "uuid"
+      description: "[Entity unique identifier]"
+      example: "550e8400-e29b-41d4-a716-446655440000"
+      required: true
+
+    name:
+      type: "string"
+      minLength: 1
+      maxLength: [appropriate_length]
+      description: "[Human-readable name or title]"
+      examples: ["Example Name 1", "Example Name 2"]
+      required: true
+
+    description:
+      type: "string"
+      maxLength: [appropriate_length]
+      nullable: true
+      description: "[Optional detailed description]"
+      required: false
+
+    # Status/State Fields
+    status:
+      type: "string"
+      enum: ["status1", "status2", "status3"]
+      default: "status1"
+      description: "[Current state of the entity]"
+      semantic_mapping:
+        status1: "[Explanation of status1]"
+        status2: "[Explanation of status2]"
+        status3: "[Explanation of status3]"
+
+    is_active:
+      type: "boolean"
+      default: true
+      description: "[Whether the entity is active/enabled]"
+
+    # Monetary Fields (if applicable)
+    amount_cents:
+      type: "integer"
+      minimum: 0
+      description: "[Amount in cents to avoid floating point issues]"
+      examples: [1500, 25000, 100]
+      semantic_note: "[Example: R$ 15,00 = 1500 cents]"
+
+    # Date Fields
+    target_date:
+      type: "string"
+      format: "date"
+      description: "[Target or deadline date]"
+      examples: ["2025-12-31", "2025-06-15"]
+
+    # Foreign Key Fields
+    parent_entity_id:
+      type: "string"
+      format: "uuid"
+      description: "[Reference to parent/related entity]"
+      required: true
+
+    # Audit Fields
+    created_by:
+      type: "string"
+      format: "uuid"
+      description: "[ID of user who created this entity]"
+
+    created_at:
+      type: "string"
+      format: "date-time"
+      description: "[Creation timestamp]"
+      example: "2025-01-24T10:30:00Z"
+
+    updated_at:
+      type: "string"
+      format: "date-time"
+      description: "[Last update timestamp]"
+      example: "2025-01-24T15:45:30Z"
+
+  # Entity Relationships
+  relationships:
+    belongs_to:
+      - entity: "ParentEntity"
+        foreign_key: "parent_entity_id"
+        description: "[Explanation of relationship]"
+
+    has_many:
+      - entity: "ChildEntity"
+        foreign_key: "entity_name_id"
+        description: "[Explanation of one-to-many relationship]"
+
+    has_one:
+      - entity: "RelatedEntity"
+        foreign_key: "entity_name_id"
+        description: "[Explanation of one-to-one relationship]"
+
+    belongs_to_many:
+      - entity: "AssociatedEntity"
+        through: "junction_table_name"
+        description: "[Explanation of many-to-many relationship]"
+
+  # Computed/Derived Fields
+  computed_fields:
+    computed_property:
+      type: "[data_type]"
+      description: "[What this computed field represents]"
+      calculation: "[How it's calculated]"
+      example: "[Example value]"
+
+    progress_percentage:
+      type: "number"
+      format: "float"
+      description: "Progress percentage (0-100)"
+      calculation: "(current_value / target_value) * 100"
+      example: 65.5
+
+    is_overdue:
+      type: "boolean"
+      description: "Whether the entity is past its target date"
+      calculation: "target_date < current_date AND status != 'completed'"
+
+  # Business Rules and Invariants
+  business_rules:
+    - rule: "descriptive_rule_name"
+      description: "[Clear description of the business rule]"
+      validation: "[How to validate this rule]"
+      examples: ["Valid case example", "Invalid case that should fail"]
+
+    - rule: "required_fields_rule"
+      description: "[Entity must have required fields populated]"
+      validation: "[field1] IS NOT NULL AND [field2] IS NOT NULL"
+
+    - rule: "status_transition_rule"
+      description: "[Valid status transitions]"
+      validation: "[Define valid state machine transitions]"
+      valid_transitions:
+        status1: ["status2", "status3"]
+        status2: ["status3"]
+        status3: [] # Terminal state
+
+    - rule: "monetary_constraints"
+      description: "[Monetary values must be non-negative]"
+      validation: "amount_cents >= 0"
+
+    - rule: "date_constraints"
+      description: "[Date relationships and constraints]"
+      validation: "[Define date logic, e.g., target_date > created_at]"
+
+  # Validation Rules
+  validation_rules:
+    create:
+      required_fields: ["name", "parent_entity_id"]
+      business_rules: ["required_fields_rule", "monetary_constraints"]
+
+    update:
+      allowed_fields: ["name", "description", "status", "amount_cents"]
+      business_rules: ["status_transition_rule", "monetary_constraints"]
+
+    delete:
+      preconditions: ["is_active = false", "no_dependent_records"]
+      business_rules: ["cascade_delete_rule"]
+
+# =============================================================================
+# RELATED VALUE OBJECTS (if applicable)
+# =============================================================================
+
+RelatedValueObject:
+  type: "value_object"
+  description: "[Description of value object purpose]"
+
+  properties:
+    value_property:
+      type: "[data_type]"
+      description: "[What this property represents]"
+      constraints: ["[constraint1]", "[constraint2]"]
+
+    currency:
+      type: "string"
+      default: "BRL"
+      enum: ["BRL", "USD", "EUR"]
+      description: "[Currency code if monetary value object]"
+
+  methods:
+    format_display:
+      return_type: "string"
+      description: "[How to format for display]"
+      examples: ["R$ 15,00", "$15.00", "€15,00"]
+
+    validate:
+      return_type: "boolean"
+      description: "[Validation logic for the value object]"
+
+  business_rules:
+    - rule: "value_constraints"
+      description: "[Value object specific constraints]"
+      validation: "[Validation logic]"
+
+# =============================================================================
+# DOMAIN EVENTS (if applicable)
+# =============================================================================
+
+domain_events:
+  EntityCreated:
+    description: "[Event fired when entity is created]"
+    payload:
+      entity_id: "string"
+      entity_data: "EntityName"
+      created_by: "string"
+      timestamp: "date-time"
+
+  EntityStatusChanged:
+    description: "[Event fired when entity status changes]"
+    payload:
+      entity_id: "string"
+      old_status: "string"
+      new_status: "string"
+      changed_by: "string"
+      timestamp: "date-time"
+
+  EntityCompleted:
+    description: "[Event fired when entity reaches completion]"
+    payload:
+      entity_id: "string"
+      completion_data: "object"
+      completed_by: "string"
+      timestamp: "date-time"
+
+# =============================================================================
+# API CONTRACTS (if exposed via API)
+# =============================================================================
+
+api_contracts:
+  create_request:
+    method: "POST"
+    endpoint: "/api/entity-name"
+    request_body:
+      required_fields: ["name", "parent_entity_id"]
+      optional_fields: ["description", "amount_cents", "target_date"]
+    response:
+      success: "201 Created"
+      body: "EntityName object"
+      error_cases:
+        400: "Validation errors"
+        409: "Business rule violations"
+
+  update_request:
+    method: "PUT"
+    endpoint: "/api/entity-name/{id}"
+    request_body:
+      allowed_fields: ["name", "description", "status"]
+    response:
+      success: "200 OK"
+      body: "Updated EntityName object"
+
+  query_request:
+    method: "GET"
+    endpoint: "/api/entity-name"
+    query_parameters:
+      - name: "parent_entity_id"
+        type: "string"
+        description: "[Filter by parent entity]"
+      - name: "status"
+        type: "string"
+        description: "[Filter by status]"
+      - name: "limit"
+        type: "integer"
+        default: 50
+        description: "[Limit results]"
+
+# =============================================================================
+# SEMANTIC MAPPINGS FOR AI/RAG
+# =============================================================================
+
+semantic_mappings:
+  synonyms:
+    - "[primary_term]"
+    - "[synonym1]"
+    - "[synonym2]"
+
+  related_concepts:
+    - concept: "[RelatedConcept1]"
+      relationship: "contains|belongs_to|relates_to"
+      description: "[How they relate]"
+
+  business_context:
+    use_cases: ["[use_case1]", "[use_case2]"]
+    personas: ["[persona1]", "[persona2]"]
+    user_stories: ["As a [user], I want to [action] so that [benefit]"]
+
+  technical_context:
+    implementation_notes: "[Implementation-specific notes]"
+    performance_considerations: "[Performance implications]"
+    scaling_factors: "[What affects scaling]"
+
+# =============================================================================
+# EXAMPLES AND USAGE
+# =============================================================================
+
+examples:
+  valid_instance:
+    id: "550e8400-e29b-41d4-a716-446655440000"
+    name: "Example Entity Name"
+    description: "This is an example description"
+    status: "status1"
+    is_active: true
+    amount_cents: 1500
+    target_date: "2025-12-31"
+    parent_entity_id: "123e4567-e89b-12d3-a456-426614174000"
+    created_by: "user123"
+    created_at: "2025-01-24T10:30:00Z"
+    updated_at: "2025-01-24T10:30:00Z"
+
+  validation_examples:
+    valid_cases:
+      - description: "[Valid scenario description]"
+        data: { [example_valid_data] }
+
+    invalid_cases:
+      - description: "[Invalid scenario description]"
+        data: { [example_invalid_data] }
+        expected_error: "[Expected validation error]"
+
+# =============================================================================
+# TESTING CONSIDERATIONS
+# =============================================================================
+
+testing_guidelines:
+  unit_tests:
+    focus_areas:
+      - "Business rule validation"
+      - "Status transitions"
+      - "Computed field calculations"
+      - "Value object behavior"
+
+    test_scenarios:
+      - "[Scenario 1: Normal creation flow]"
+      - "[Scenario 2: Validation errors]"
+      - "[Scenario 3: Business rule violations]"
+
+  integration_tests:
+    focus_areas:
+      - "Database persistence"
+      - "Relationship integrity"
+      - "Event publication"
+      - "API contract compliance"
+
+# =============================================================================
+# MIGRATION AND VERSIONING
+# =============================================================================
+
+versioning:
+  current_version: "1.0.0"
+  schema_evolution:
+    breaking_changes:
+      - version: "2.0.0"
+        description: "[What would constitute a breaking change]"
+        migration_strategy: "[How to migrate existing data]"
+
+    non_breaking_changes:
+      - version: "1.1.0"
+        description: "[Adding optional fields or computed properties]"
+
+# =============================================================================
+# MAINTENANCE NOTES
+# =============================================================================
+
+maintenance:
+  update_triggers:
+    - "[Business requirement change]"
+    - "[New relationship identified]"
+    - "[Performance optimization needed]"
+    - "[Compliance requirement]"
+
+  related_documentation:
+    - "../domain-ontology.md#EntityName"
+    - "../domain-glossary.md#entity-name"
+    - "../business/product-vision/core-concepts.md#entity-concept"
+
+  review_schedule:
+    frequency: "[monthly|quarterly|on_change]"
+    stakeholders: ["[role1]", "[role2]"]
+    checklist:
+      - "[ ] Business rules still accurate"
+      - "[ ] Relationships properly defined"
+      - "[ ] Examples are current"
+      - "[ ] API contracts match implementation"
