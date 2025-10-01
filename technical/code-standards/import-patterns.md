@@ -1,4 +1,4 @@
-# Padrões de Import e Dependências
+# Padrões de Import e Dependências - DTO-First Architecture
 
 ## 🎯 Path Aliases vs Imports Relativos
 
@@ -8,12 +8,13 @@ Use **path aliases** quando importar de camadas arquiteturais diferentes:
 
 ```typescript
 // ✅ CORRETO - Path aliases entre camadas
-import { Transaction } from '@models/entities/Transaction';
+import { CreateTransactionDto } from '@dtos/CreateTransactionDto';
+import { TransactionDto } from '@dtos/TransactionDto';
 import { ITransactionRepository } from '@application/ports/ITransactionRepository';
 import { HttpTransactionAdapter } from '@infra/adapters/HttpTransactionAdapter';
 import { TransactionListComponent } from '@app/features/transactions/transaction-list.component';
 
-// ✅ Domain → Application
+// ✅ DTOs → Application
 import { CreateTransactionUseCase } from '@application/use-cases/CreateTransactionUseCase';
 import { TransactionServicePort } from '@application/ports/TransactionServicePort';
 
@@ -32,13 +33,13 @@ Use **imports relativos** quando importar dentro da mesma camada:
 ```typescript
 // ✅ CORRETO - Imports relativos na mesma camada
 
-// Domain layer
-import { Money } from '../value-objects/Money';
-import { TransactionId } from './TransactionId';
-import { TransactionStatus } from './TransactionStatus';
+// DTOs layer
+import { CreateTransactionDto } from './CreateTransactionDto';
+import { UpdateTransactionDto } from './UpdateTransactionDto';
+import { TransactionDto } from './TransactionDto';
 
 // Application layer  
-import { CreateTransactionDto } from '../dtos/CreateTransactionDto';
+import { CreateTransactionUseCase } from '../use-cases/CreateTransactionUseCase';
 import { TransactionValidator } from './validators/TransactionValidator';
 
 // UI layer
@@ -58,9 +59,9 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { Either, left, right } from 'fp-ts/lib/Either';
 import { pipe } from 'fp-ts/lib/function';
 
-// 2. 🏗️ Camadas internas (ordem: Domain → Application → Infrastructure → UI)
-import { Transaction } from '@models/entities/Transaction';                    // Domain
-import { Money } from '@models/value-objects/Money';                           // Domain
+// 2. 🏗️ Camadas internas (ordem: DTOs → Application → Infrastructure → UI)
+import { CreateTransactionDto } from '@dtos/CreateTransactionDto';                    // DTOs
+import { TransactionDto } from '@dtos/TransactionDto';                               // DTOs
 import { CreateTransactionUseCase } from '@application/use-cases/CreateTransactionUseCase'; // Application
 import { ITransactionServicePort } from '@application/ports/ITransactionServicePort';       // Application
 import { HttpTransactionAdapter } from '@infra/adapters/HttpTransactionAdapter';           // Infrastructure
@@ -89,12 +90,11 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { Router } from '@angular/router';
 import { Either } from 'fp-ts/lib/Either';
 
-// 2. Internal layers (Domain → Application → Infrastructure)
-import { Transaction } from '@models/entities/Transaction';
-import { Money } from '@models/value-objects/Money';
-import { TransactionId } from '@models/value-objects/TransactionId';
+// 2. Internal layers (DTOs → Application → Infrastructure)
+import { CreateTransactionDto } from '@dtos/CreateTransactionDto';
+import { TransactionDto } from '@dtos/TransactionDto';
 import { CreateTransactionUseCase } from '@application/use-cases/CreateTransactionUseCase';
-import { CreateTransactionDto } from '@application/dtos/CreateTransactionDto';
+import { ITransactionServicePort } from '@application/ports/ITransactionServicePort';
 
 // 3. Relative imports (shared → specific)
 import { BaseFormComponent } from '../shared/base-form.component';
@@ -118,12 +118,12 @@ export class TransactionFormComponent extends BaseFormComponent {
 ### ❌ Imports Relativos Entre Camadas
 ```typescript
 // ❌ EVITAR - Imports relativos entre camadas diferentes
-import { Transaction } from '../../../models/entities/Transaction';
+import { CreateTransactionDto } from '../../../dtos/CreateTransactionDto';
 import { CreateTransactionUseCase } from '../../application/use-cases/CreateTransactionUseCase';
 import { HttpTransactionAdapter } from '../infra/adapters/HttpTransactionAdapter';
 
 // ✅ PREFERIR - Path aliases
-import { Transaction } from '@models/entities/Transaction';
+import { CreateTransactionDto } from '@dtos/CreateTransactionDto';
 import { CreateTransactionUseCase } from '@application/use-cases/CreateTransactionUseCase';
 import { HttpTransactionAdapter } from '@infra/adapters/HttpTransactionAdapter';
 ```
@@ -132,7 +132,7 @@ import { HttpTransactionAdapter } from '@infra/adapters/HttpTransactionAdapter';
 ```typescript
 // ❌ EVITAR - Path aliases na mesma camada (quando desnecessário)
 import { TransactionValidator } from '@application/validators/TransactionValidator';
-import { CreateTransactionDto } from '@application/dtos/CreateTransactionDto';
+import { CreateTransactionDto } from '@dtos/CreateTransactionDto';
 
 // ✅ PREFERIR - Imports relativos na mesma camada  
 import { TransactionValidator } from './validators/TransactionValidator';
@@ -144,12 +144,12 @@ import { CreateTransactionDto } from '../dtos/CreateTransactionDto';
 // ❌ EVITAR - Ordem aleatória
 import { TransactionFormData } from './types';              // Relativo
 import { Component } from '@angular/core';                  // Externo
-import { Transaction } from '@models/entities/Transaction'; // Interno
+import { CreateTransactionDto } from '@dtos/CreateTransactionDto'; // Interno
 import { BaseComponent } from '../shared/BaseComponent';    // Relativo
 
 // ✅ CORRETO - Ordem estruturada
 import { Component } from '@angular/core';                  // 1. Externo
-import { Transaction } from '@models/entities/Transaction'; // 2. Interno
+import { CreateTransactionDto } from '@dtos/CreateTransactionDto'; // 2. Interno
 import { BaseComponent } from '../shared/BaseComponent';    // 3. Relativo
 import { TransactionFormData } from './types';              // 3. Relativo
 ```
@@ -163,7 +163,7 @@ import { TransactionFormData } from './types';              // 3. Relativo
   "compilerOptions": {
     "baseUrl": "./src",
     "paths": {
-      "@models/*": ["models/*"],
+      "@dtos/*": ["dtos/*"],
       "@application/*": ["application/*"], 
       "@infra/*": ["infra/*"],
       "@app/*": ["app/*"],
@@ -186,7 +186,7 @@ import { TransactionFormData } from './types';              // 3. Relativo
         "groups": [
           "builtin",    // Node.js built-in modules
           "external",   // npm packages
-          "internal",   // Path aliases (@models, @application, etc.)
+          "internal",   // Path aliases (@dtos, @application, etc.)
           "parent",     // ../
           "sibling",    // ./
           "index"       // ./index
@@ -204,7 +204,7 @@ import { TransactionFormData } from './types';              // 3. Relativo
       "error",
       {
         "ignore": [
-          "./src/models/**/*",       // Models can use relative
+          "./src/dtos/**/*",         // DTOs can use relative
           "./src/application/**/*"   // Application can use relative  
         ]
       }
@@ -215,16 +215,16 @@ import { TransactionFormData } from './types';              // 3. Relativo
 
 ## 🏗️ Estratégias por Camada
 
-### Models (Domain)
+### DTOs (Data Transfer Objects)
 ```typescript
-// models/entities/Transaction.ts
+// dtos/CreateTransactionDto.ts
 // ✅ Apenas imports relativos + bibliotecas puras
 import { Either } from 'fp-ts/lib/Either';           // External pure
 import { format } from 'date-fns';                   // External pure
 
-import { Money } from '../value-objects/Money';      // Relative same layer
-import { TransactionId } from '../value-objects/TransactionId'; 
-import { TransactionStatus } from '../enums/TransactionStatus';
+import { UpdateTransactionDto } from './UpdateTransactionDto';      // Relative same layer
+import { TransactionDto } from './TransactionDto'; 
+import { TransactionCriteriaDto } from './TransactionCriteriaDto';
 
 // ❌ NÃO pode importar outras camadas
 // import { CreateTransactionUseCase } from '@application/...'; ❌
@@ -234,14 +234,14 @@ import { TransactionStatus } from '../enums/TransactionStatus';
 ### Application
 ```typescript
 // application/use-cases/CreateTransactionUseCase.ts
-// ✅ Importa Domain + bibliotecas + relativos na mesma camada
+// ✅ Importa DTOs + bibliotecas + relativos na mesma camada
 import { Either } from 'fp-ts/lib/Either';           // External
 
-import { Transaction } from '@models/entities/Transaction';      // Domain
-import { Money } from '@models/value-objects/Money';             // Domain
+import { CreateTransactionDto } from '@dtos/CreateTransactionDto';      // DTOs
+import { TransactionDto } from '@dtos/TransactionDto';             // DTOs
 
-import { CreateTransactionDto } from '../dtos/CreateTransactionDto'; // Relative same layer
-import { ITransactionServicePort } from '../ports/ITransactionServicePort';
+import { ITransactionServicePort } from '../ports/ITransactionServicePort'; // Relative same layer
+import { TransactionValidator } from './validators/TransactionValidator';
 
 // ❌ NÃO pode importar Infrastructure ou UI
 // import { HttpTransactionAdapter } from '@infra/...'; ❌
@@ -251,13 +251,13 @@ import { ITransactionServicePort } from '../ports/ITransactionServicePort';
 ### Infrastructure
 ```typescript
 // infra/adapters/HttpTransactionAdapter.ts
-// ✅ Importa Application + Domain + bibliotecas + relativos
+// ✅ Importa Application + DTOs + bibliotecas + relativos
 import { Injectable } from '@angular/core';          // External
 import { HttpClient } from '@angular/common/http';   // External
 
-import { Transaction } from '@models/entities/Transaction';               // Domain
+import { CreateTransactionDto } from '@dtos/CreateTransactionDto';               // DTOs
 import { ITransactionServicePort } from '@application/ports/ITransactionServicePort'; // Application
-import { CreateTransactionDto } from '@application/dtos/CreateTransactionDto';
+import { TransactionDto } from '@dtos/TransactionDto';
 
 import { BaseHttpAdapter } from './BaseHttpAdapter'; // Relative same layer
 import { HttpClientMapper } from './HttpClientMapper';
@@ -269,9 +269,9 @@ import { HttpClientMapper } from './HttpClientMapper';
 // ✅ Pode importar todas as camadas + Angular + relativos
 import { Component, inject } from '@angular/core';   // External
 
-import { Transaction } from '@models/entities/Transaction';               // Domain
+import { CreateTransactionDto } from '@dtos/CreateTransactionDto';               // DTOs
 import { CreateTransactionUseCase } from '@application/use-cases/CreateTransactionUseCase'; // Application
-import { CreateTransactionDto } from '@application/dtos/CreateTransactionDto';
+import { TransactionDto } from '@dtos/TransactionDto';
 
 import { BaseFormComponent } from '../shared/base-form.component'; // Relative UI
 import { TransactionFormData } from './types';
@@ -279,7 +279,7 @@ import { TransactionFormData } from './types';
 
 ## 🔄 Imports de Third-Party Libraries
 
-### Domain Layer - Apenas Pure Functions
+### DTOs Layer - Apenas Pure Functions
 ```typescript
 // ✅ PERMITIDO - Libraries puras
 import { format, parse } from 'date-fns';        // Pure date utilities
@@ -293,7 +293,7 @@ import { Injectable } from '@angular/core';        // Framework dependency
 
 ### Application Layer - Abstractions Only
 ```typescript
-// ✅ PERMITIDO - Pure utilities + domain
+// ✅ PERMITIDO - Pure utilities + DTOs
 import { Either } from 'fp-ts/lib/Either';  // Pure functional
 import { format } from 'date-fns';          // Pure utility
 
@@ -329,12 +329,10 @@ import { MatDialog } from '@angular/material/dialog';   // Material UI
 import { Either } from 'fp-ts/lib/Either';
 import { pipe } from 'fp-ts/lib/function';
 
-import { Account } from '@models/entities/Account';
-import { Transaction } from '@models/entities/Transaction';  
-import { Money } from '@models/value-objects/Money';
-import { TransactionId } from '@models/value-objects/TransactionId';
+import { TransferBetweenAccountsDto } from '@dtos/TransferBetweenAccountsDto';
+import { AccountDto } from '@dtos/AccountDto';
+import { TransactionDto } from '@dtos/TransactionDto';
 
-import { TransferBetweenAccountsDto } from '../dtos/TransferBetweenAccountsDto';
 import { IAuthorizationService } from '../ports/IAuthorizationService';
 import { IAccountRepository } from '../ports/IAccountRepository';
 import { ITransactionRepository } from '../ports/ITransactionRepository';
@@ -357,8 +355,8 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { Budget } from '@models/entities/Budget';
-import { Money } from '@models/value-objects/Money';
+import { BudgetDto } from '@dtos/BudgetDto';
+import { TransactionDto } from '@dtos/TransactionDto';
 import { GetBudgetSummaryQueryHandler } from '@application/query-handlers/GetBudgetSummaryQueryHandler';
 
 import { BasePageComponent } from '../shared/base-page.component';
@@ -374,3 +372,4 @@ import { TransactionListWidget } from './widgets/transaction-list.widget';
 - **[Naming Conventions](./naming-conventions.md)** - Como nomear arquivos e imports
 - **[Validation Rules](./validation-rules.md)** - ESLint boundary rules
 - **[Class Structure](./class-structure.md)** - Organização interna das classes
+- **[DTO Conventions](./dto-conventions.md)** - Convenções para DTOs
