@@ -10,20 +10,20 @@
 // ❌ Evitar comentários óbvios
 export class TransactionService {
   // Creates a new transaction - DESNECESSÁRIO
-  public createTransaction(dto: CreateTransactionDto) { }
-  
-  // Gets transaction by ID - DESNECESSÁRIO  
-  public getById(id: string) { }
-  
+  public createTransaction(dto: CreateTransactionDto) {}
+
+  // Gets transaction by ID - DESNECESSÁRIO
+  public getById(id: string) {}
+
   // Deletes a transaction - DESNECESSÁRIO
-  public delete(id: string) { }
+  public delete(id: string) {}
 }
 
 // ✅ Código auto-explicativo (SEM comentários)
 export class TransactionService {
-  public createTransaction(dto: CreateTransactionDto) { }
-  public getById(id: string) { }
-  public delete(id: string) { }
+  public createTransaction(dto: CreateTransactionDto) {}
+  public getById(id: string) {}
+  public delete(id: string) {}
 }
 ```
 
@@ -36,7 +36,7 @@ export class BudgetCalculator {
   calculateTotal(transactions: Transaction[]): Money {
     return transactions.reduce((sum, t) => sum.add(t.amount), Money.zero());
   }
-  
+
   // Check if budget is valid
   isValid(budget: Budget): boolean {
     return budget.amount.isPositive() && budget.name.length > 0;
@@ -48,7 +48,7 @@ export class BudgetCalculator {
   calculateTotal(transactions: Transaction[]): Money {
     return transactions.reduce((sum, t) => sum.add(t.amount), Money.zero());
   }
-  
+
   isValid(budget: Budget): boolean {
     return budget.amount.isPositive() && budget.name.length > 0;
   }
@@ -66,14 +66,14 @@ Apenas quando **explicitamente solicitado** ou para casos específicos:
 export class Transaction {
   public markAsLate(): Either<DomainError, void> {
     // Business rule: only pending transactions older than 5 days can be marked late
-    if (this.status !== 'pending' || this.daysSinceCreation() < 5) {
+    if (this.status !== "pending" || this.daysSinceCreation() < 5) {
       return Either.left(new InvalidTransactionStateError());
     }
-    
-    this.status = 'late';
+
+    this.status = "late";
     return Either.right(void 0);
   }
-  
+
   public calculateInterest(): Money {
     // Financial rule: compound interest applied daily after due date
     // Formula: P * (1 + r)^t where r=0.001 (0.1% daily)
@@ -114,7 +114,7 @@ export class PaymentProcessor {
     if (response.status === 200 && response.body.error) {
       return Either.left(new PaymentError(response.body.error));
     }
-    
+
     return Either.right(void 0);
   }
 }
@@ -128,62 +128,9 @@ export class DatabaseConfig {
   // Connection pool sized for expected concurrent users (500-1000)
   // Based on load testing results from 2024-12-15
   readonly maxConnections = 50;
-  
+
   // Timeout set to prevent hanging queries during peak hours
   readonly queryTimeout = 30_000; // 30 seconds
-}
-```
-
-## 📝 JSDoc (Quando Necessário)
-
-### Métodos Públicos de APIs
-
-```typescript
-/**
- * Transfers amount between two accounts within the same budget
- * 
- * @param fromAccountId Source account identifier
- * @param toAccountId Target account identifier
- * @param amount Amount in cents to transfer
- * @param budgetId Budget context for authorization
- * @returns Either error or void on success
- * 
- * @example
- * ```typescript
- * const result = await service.transferBetweenAccounts(
- *   'acc-123',
- *   'acc-456', 
- *   1000,
- *   'budget-789'
- * );
- * ```
- */
-public async transferBetweenAccounts(
-  fromAccountId: string,
-  toAccountId: string, 
-  amount: number,
-  budgetId: string
-): Promise<Either<ApplicationError, void>> {
-  // implementation
-}
-```
-
-### Interfaces Públicas
-
-```typescript
-/**
- * Repository contract for transaction persistence operations
- * 
- * @interface ITransactionRepository
- */
-export interface ITransactionRepository {
-  /**
-   * Persists a new transaction to the database
-   * 
-   * @param transaction The transaction entity to persist
-   * @returns Either persistence error or void on success
-   */
-  execute(transaction: Transaction): Promise<Either<RepositoryError, void>>;
 }
 ```
 
@@ -192,20 +139,20 @@ export interface ITransactionRepository {
 ```typescript
 /**
  * Transaction status representing the lifecycle state
- * 
+ *
  * @enum TransactionStatus
  */
 export enum TransactionStatus {
   /** Initial state after creation */
-  PENDING = 'pending',
+  PENDING = "pending",
   /** Successfully processed */
-  COMPLETED = 'completed',  
+  COMPLETED = "completed",
   /** Processing failed */
-  FAILED = 'failed',
+  FAILED = "failed",
   /** Cancelled by user before processing */
-  CANCELLED = 'cancelled',
+  CANCELLED = "cancelled",
   /** Past due date without payment */
-  LATE = 'late'
+  LATE = "late",
 }
 ```
 
@@ -232,7 +179,7 @@ export class PaymentProcessor {
   async processPayment(payment: Payment): Promise<void> {
     // console.log('Processing payment:', payment);  ← REMOVER
     // debugger;  ← REMOVER
-    
+
     await this.gateway.charge(payment);
   }
 }
@@ -245,7 +192,7 @@ export class PaymentProcessor {
 export class TransactionCalculator {
   calculateTotal(transactions: Transaction[]): Money {
     return transactions.reduce((sum, t) => sum.add(t.amount), Money.zero());
-    
+
     // const total = 0;  ← DELETAR
     // for (const transaction of transactions) {  ← DELETAR
     //   total += transaction.amount.cents;  ← DELETAR
@@ -275,15 +222,23 @@ export class BudgetService {
 ```typescript
 // ✅ Nomes que eliminam necessidade de comentários
 export class TransactionValidator {
-  public validateAmountIsPositive(amount: Money): Either<ValidationError, void> {
+  public validateAmountIsPositive(
+    amount: Money
+  ): Either<ValidationError, void> {
     // Nome do método já explica o que faz
   }
-  
-  public ensureUserCanAccessBudget(userId: string, budgetId: string): Either<AuthorizationError, void> {
+
+  public ensureUserCanAccessBudget(
+    userId: string,
+    budgetId: string
+  ): Either<AuthorizationError, void> {
     // Intenção clara pelo nome
   }
-  
-  private checkIfTransactionExceedsBudgetLimit(transaction: Transaction, budget: Budget): boolean {
+
+  private checkIfTransactionExceedsBudgetLimit(
+    transaction: Transaction,
+    budget: Budget
+  ): boolean {
     // Lógica evidente pelo nome do método
   }
 }
@@ -299,11 +254,11 @@ export class BudgetCalculator {
     const totalAllocated = this.calculateTotalAllocatedAmount(budget);
     return totalAllocated.subtract(totalSpent);
   }
-  
+
   private calculateTotalSpentAmount(budget: Budget): Money {
     // Método específico elimina necessidade de comentário
   }
-  
+
   private calculateTotalAllocatedAmount(budget: Budget): Money {
     // Método específico elimina necessidade de comentário
   }
@@ -315,5 +270,6 @@ export class BudgetCalculator {
 **Regra de ouro:** Se você precisa de um comentário para explicar o que o código faz, provavelmente o código pode ser melhorado para ser auto-explicativo.
 
 **Próximos tópicos:**
+
 - **[Angular Modern Patterns](./angular-modern-patterns.md)** - Padrões Angular modernos
 - **[Testing Standards](./testing-standards.md)** - Padrões de testes
