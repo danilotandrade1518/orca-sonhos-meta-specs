@@ -10,9 +10,9 @@ domain: "personal_finance"
 audience: ["developers", "product_managers", "business_analysts"]
 complexity: "intermediate"
 tags:
-  ["core_concepts", "domain_model", "business_rules", "financial_management"]
-related_docs: ["domain-ontology.md", "use-cases.md", "mvp-scope.md"]
-ai_context: "Central domain concepts for OrçaSonhos financial management platform"
+  ["core_concepts", "dto_first", "business_rules", "financial_management"]
+related_docs: ["domain-ontology.md", "use-cases.md", "mvp-scope.md", "../technical/frontend-architecture/dto-first-principles.md"]
+ai_context: "Central domain concepts for OrçaSonhos financial management platform with DTO-First Architecture"
 last_updated: "2025-01-24"
 ```
 
@@ -194,7 +194,79 @@ O OrçaSonhos permite **gerenciar cartões de crédito de forma integrada ao con
 
 ---
 
+## 🏗️ Arquitetura DTO-First
+
+O OrçaSonhos implementa uma **DTO-First Architecture** que prioriza **Data Transfer Objects (DTOs)** como contratos principais entre frontend e backend, garantindo simplicidade e alinhamento total com a API.
+
+### **Princípios DTO-First:**
+
+#### **1. DTOs como Cidadãos de Primeira Classe**
+- **Contratos de API**: DTOs representam exatamente os dados que fluem entre frontend e backend
+- **Estado da Aplicação**: O frontend trabalha diretamente com DTOs, sem transformações complexas
+- **Alinhamento Total**: Mudanças na API refletem imediatamente no frontend
+
+#### **2. Backend como Fonte da Verdade**
+- **Regras de Negócio**: Todas as validações complexas e lógica de domínio residem no backend
+- **Consistência**: Garantida entre diferentes clientes (web, mobile, etc.)
+- **Simplicidade Frontend**: Foco na experiência do usuário, não na lógica de negócio
+
+#### **3. Conceitos de Negócio ↔ DTOs**
+
+| Conceito de Negócio | DTO Correspondente | Propósito |
+|---------------------|-------------------|-----------|
+| **Orçamento** | `BudgetResponseDto` | Exibição de orçamentos na interface |
+| **Transação** | `TransactionResponseDto` | Listagem e detalhes de transações |
+| **Meta** | `GoalResponseDto` | Acompanhamento de objetivos financeiros |
+| **Conta** | `AccountResponseDto` | Gestão de contas bancárias |
+| **Cartão de Crédito** | `CreditCardResponseDto` | Controle de cartões e faturas |
+| **Envelope** | `EnvelopeResponseDto` | Orçamento mensal por categoria |
+
+#### **4. Fluxo de Dados Simplificado**
+
+```
+[Backend API] → [DTO] → [Frontend State] → [UI Components]
+```
+
+- **Sem Mapeamentos Complexos**: DTOs fluem diretamente para a interface
+- **Validações Client-Side**: Apenas para melhorar UX (formulários, feedback imediato)
+- **Validações Server-Side**: Para garantir integridade e segurança dos dados
+
+#### **5. Benefícios para os Conceitos de Negócio**
+
+- **Simplicidade**: Desenvolvedores focam nos conceitos de negócio, não na arquitetura
+- **Manutenibilidade**: Mudanças nos conceitos refletem diretamente no código
+- **Alinhamento**: Frontend e backend sempre sincronizados
+- **Testabilidade**: DTOs são fáceis de testar e mockar
+
+### **Exemplo Prático - Orçamento:**
+
+```typescript
+// DTO que representa um orçamento na interface
+interface BudgetResponseDto {
+  readonly id: string;
+  readonly name: string;
+  readonly limitInCents: number;
+  readonly currentUsageInCents: number;
+  readonly participants: BudgetParticipantDto[];
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+// Componente Angular usando DTO diretamente
+@Component({...})
+export class BudgetCardComponent {
+  budget = input.required<BudgetResponseDto>();
+  
+  protected usagePercentage = computed(() => 
+    (this.budget().currentUsageInCents / this.budget().limitInCents) * 100
+  );
+}
+```
+
+---
+
 **Próximos tópicos:**
 
 - **[Use Cases](./use-cases.md)** - Casos de uso prioritários
 - **[MVP Scope](./mvp-scope.md)** - Escopo do MVP
+- **[DTO-First Principles](../technical/frontend-architecture/dto-first-principles.md)** - Princípios arquiteturais detalhados

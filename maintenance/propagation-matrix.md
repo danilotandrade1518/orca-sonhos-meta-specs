@@ -7,9 +7,9 @@ document_type: "propagation_matrix"
 domain: "documentation_governance"
 audience: ["ai_systems", "technical_writers", "architects"]
 complexity: "advanced"
-tags: ["propagation", "dependencies", "semantic_mapping", "maintenance"]
-related_docs: ["../documentation-maintenance-guide.md", "../domain-ontology.md"]
-ai_context: "Semantic propagation rules for documentation maintenance"
+tags: ["propagation", "dependencies", "semantic_mapping", "maintenance", "dto_first"]
+related_docs: ["../documentation-maintenance-guide.md", "../domain-ontology.md", "../technical/frontend-architecture/dto-first-principles.md"]
+ai_context: "Semantic propagation rules for documentation maintenance with DTO-First Architecture"
 last_updated: "2025-01-24"
 ```
 ---
@@ -46,6 +46,15 @@ Esta matriz define **regras de propagação semântica** para garantir que mudan
 | **Domain Ontology** → Nova relação | Todos os docs que referenciam conceitos | Validar consistência terminológica |
 | **Domain Glossary** → Nova definição | Todos os docs | Buscar e atualizar uso do termo |
 | **Entity Schemas** → Nova entidade | Domain Model, Use Cases, Core Concepts | Integrar nova entidade ao domínio |
+
+### **🏗️ DTO-First Architecture → Technical Documents**
+
+| Mudança DTO-First | Impacto Técnico | Ação Requerida |
+|-------------------|-----------------|----------------|
+| **DTO Conventions** → Nova convenção | Todos os DTOs, Testes, Componentes | Aplicar convenção em todos os DTOs |
+| **DTO Structure** → Nova estrutura | API Patterns, Backend Integration | Sincronizar contratos de API |
+| **DTO Validation** → Nova regra | Testing Strategy, Use Cases | Atualizar testes e validações |
+| **API Contract** → Mudança contrato | DTOs, Frontend Architecture | Atualizar DTOs correspondentes |
 
 ---
 
@@ -246,6 +255,31 @@ graph TD
     I -->|SIM| J[Documentar em API Patterns]
     I -->|NÃO| K[Validar Consistência]
     J --> K
+```
+
+### **5️⃣ Mudança DTO-First Architecture**
+
+```mermaid
+graph TD
+    A[Mudança DTO-First] --> B{Tipo de Mudança}
+    
+    B -->|Nova Convenção| C[Atualizar DTO Conventions]
+    B -->|Nova Estrutura| D[Atualizar DTO Structure]
+    B -->|Nova Validação| E[Atualizar DTO Validation]
+    B -->|Mudança API| F[Atualizar API Contract]
+    
+    C --> G[Propagar para Todos DTOs]
+    D --> H[Atualizar Backend Integration]
+    E --> I[Atualizar Testing Strategy]
+    F --> J[Atualizar Frontend Architecture]
+    
+    G --> K[Validar Consistência DTOs]
+    H --> K
+    I --> K
+    J --> K
+    
+    K --> L[Atualizar Documentação Relacionada]
+    L --> M[Executar Testes de Validação]
 ```
 
 **Template Novo Agregado:**
@@ -504,6 +538,33 @@ resolucao_inconsistencias:
   - [ ] Core Concepts alinhado com nova definição
   - [ ] Entity Schemas sincronizados se aplicável
   - [ ] Use Cases validados com nova definição
+```
+
+### **✅ Mudança DTO-First Architecture**
+```markdown
+- [ ] Tipo de mudança identificado?
+  - [ ] Nova convenção de DTO
+  - [ ] Mudança na estrutura de DTO
+  - [ ] Nova regra de validação
+  - [ ] Mudança no contrato de API
+
+- [ ] Documentos DTO-First atualizados?
+  - [ ] DTO Conventions atualizado
+  - [ ] DTO-First Principles revisado
+  - [ ] Backend Integration sincronizado
+  - [ ] Testing Strategy ajustado
+
+- [ ] Propagação para DTOs existentes?
+  - [ ] Todos DTOs seguem nova convenção
+  - [ ] Estruturas de DTO atualizadas
+  - [ ] Validações aplicadas consistentemente
+  - [ ] Contratos de API alinhados
+
+- [ ] Documentação técnica atualizada?
+  - [ ] Frontend Architecture revisado
+  - [ ] Code Standards atualizados
+  - [ ] Exemplos de código atualizados
+  - [ ] Testes de validação executados
 ```
 
 ---
