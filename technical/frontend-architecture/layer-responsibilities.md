@@ -1,106 +1,85 @@
 # Responsabilidades das Camadas
 
-## 1. Models (Domain) - TypeScript Puro
+## 1. DTOs - Contratos de API
 
 ### Responsabilidades
-- **Entities**: Modelos de domínio com identidade (`Budget`, `Account`, `Transaction`)
-- **Value Objects**: Objetos imutáveis sem identidade (`Money`, `Email`, `TransactionType`)
-- **Business Rules**: Políticas e validações de domínio
-- **Domain Services**: Lógica que envolve múltiplas entidades
+
+- **Request DTOs**: Estruturas para dados enviados ao backend (`CreateTransactionRequestDto`)
+- **Response DTOs**: Estruturas para dados recebidos do backend (`TransactionResponseDto`)
+- **Shared Types**: Tipos compartilhados entre frontend e backend (`Money`, `DateString`)
+- **API Contracts**: Interfaces TypeScript que espelham exatamente a API
 
 ### Características
+
 - **Zero Dependencies**: Nenhuma dependência de framework ou biblioteca externa
-- **Pure TypeScript**: Apenas lógica de negócio pura
-- **100% Testável**: Fácil de testar isoladamente
+- **Pure TypeScript**: Apenas interfaces e tipos
+- **API Aligned**: Espelham exatamente os contratos do backend
 - **Framework Agnostic**: Portável para qualquer plataforma
 
 ### Exemplos Práticos
 
-#### Domain Entity
+#### Request DTO
+
 ```typescript
-// models/entities/Budget.ts
-export class Budget {
-  private constructor(
-    private readonly _id: string,
-    private _name: string,
-    private _limit: Money,
-    private _participants: string[]
-  ) {}
-
-  public static create(params: CreateBudgetParams): Either<DomainError, Budget> {
-    const validation = this.validate(params);
-    if (validation.hasError) {
-      return validation;
-    }
-
-    return Either.success(new Budget(
-      generateId(),
-      params.name,
-      Money.fromCents(params.limitInCents),
-      [params.ownerId]
-    ));
-  }
-
-  public addParticipant(userId: string): Either<DomainError, void> {
-    if (this._participants.includes(userId)) {
-      return Either.error(new DomainError('User already participant'));
-    }
-    
-    this._participants.push(userId);
-    return Either.success(undefined);
-  }
-
-  public get id(): string { return this._id; }
-  public get name(): string { return this._name; }
-  public get limit(): Money { return this._limit; }
+// dtos/request/CreateTransactionRequestDto.ts
+export interface CreateTransactionRequestDto {
+  readonly accountId: string;
+  readonly budgetId: string;
+  readonly amountInCents: number; // Money como number (centavos)
+  readonly description: string;
+  readonly type: "INCOME" | "EXPENSE"; // Enum como string literal
+  readonly categoryId?: string;
+  readonly date?: string; // ISO date string
 }
 ```
 
-#### Value Object
+#### Response DTO
+
 ```typescript
-// models/value-objects/Money.ts
-export class Money {
-  private constructor(private readonly _amountInCents: number) {}
-
-  public static fromCents(cents: number): Money {
-    if (cents < 0) {
-      throw new Error('Money amount cannot be negative');
-    }
-    return new Money(cents);
-  }
-
-  public static fromReais(reais: number): Money {
-    return new Money(Math.round(reais * 100));
-  }
-
-  public add(other: Money): Money {
-    return new Money(this._amountInCents + other._amountInCents);
-  }
-
-  public get cents(): number { return this._amountInCents; }
-  public get reais(): number { return this._amountInCents / 100; }
+// dtos/response/TransactionResponseDto.ts
+export interface TransactionResponseDto {
+  readonly id: string;
+  readonly accountId: string;
+  readonly budgetId: string;
+  readonly amountInCents: number;
+  readonly description: string;
+  readonly type: "INCOME" | "EXPENSE";
+  readonly categoryId?: string;
+  readonly date: string; // ISO date string
+  readonly createdAt: string;
+  readonly updatedAt: string;
 }
 ```
 
-#### Domain Policy
+#### Shared Types
+
 ```typescript
-// models/policies/TransferPolicy.ts
-export class TransferPolicy {
-  public static canTransfer(
-    fromAccount: Account, 
-    toAccount: Account, 
-    amount: Money
-  ): Either<PolicyViolation, void> {
-    if (fromAccount.balance.isLessThan(amount)) {
-      return Either.error(new InsufficientFundsError());
-    }
+// dtos/shared/Money.ts
+export type Money = number; // Sempre em centavos
 
-    if (fromAccount.isBlocked || toAccount.isBlocked) {
-      return Either.error(new BlockedAccountError());
-    }
+// dtos/shared/DateString.ts
+export type DateString = string; // ISO 8601 format
 
-    return Either.success(undefined);
-  }
+// dtos/shared/TransactionType.ts
+export type TransactionType = "INCOME" | "EXPENSE";
+
+// dtos/shared/BaseEntity.ts
+export interface BaseEntityDto {
+  readonly id: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+```
+
+#### List Response DTO
+
+```typescript
+// dtos/response/BudgetListResponseDto.ts
+export interface BudgetListResponseDto {
+  readonly budgets: BudgetResponseDto[];
+  readonly total: number;
+  readonly page: number;
+  readonly pageSize: number;
 }
 ```
 
@@ -109,123 +88,118 @@ export class TransferPolicy {
 ## 2. Application - Use Cases e Orquestração (TypeScript Puro)
 
 ### Responsabilidades
-- **Use Cases**: Orquestração de operações de negócio (`CreateTransactionUseCase`)
-- **Query Handlers**: Processamento de consultas (`GetBudgetSummaryQueryHandler`)
-- **Ports Definition**: Interfaces para serviços externos (`IBudgetServicePort`)
-- **DTOs**: Objetos de transferência de dados entre camadas
-- **Mappers**: Conversão entre Domain Models e DTOs
+
+- **Commands**: Orquestração de operações de escrita (`CreateTransactionCommand`)
+- **Queries**: Processamento de consultas (`GetBudgetSummaryQuery`)
+- **Ports Definition**: 1 interface por operação (`ICreateBudgetPort`, `IGetBudgetByIdPort`)
+- **Validators**: Validações client-side básicas para UX
+- **Transformers**: Transformações leves de dados quando necessário
 
 ### Características
-- **Orchestration**: Coordena Domain Models e Policies
+
+- **HTTP Orchestration**: Coordena chamadas para o backend
 - **Framework Agnostic**: Sem dependências de Angular
 - **Port Definitions**: Define contratos que Infra implementa
-- **Business Flows**: Implementa casos de uso completos
+- **Simple Logic**: Validações básicas e transformações simples
 
 ### Exemplos Práticos
 
-#### Use Case (Command)
-```typescript
-// application/use-cases/CreateTransactionUseCase.ts
-export class CreateTransactionUseCase {
-  constructor(
-    private transactionService: ITransactionServicePort,
-    private accountService: IAccountServicePort
-  ) {}
+#### Command (Mutation)
 
-  async execute(dto: CreateTransactionDto): Promise<Either<ApplicationError, void>> {
-    // 1. Validar entrada
+```typescript
+// application/commands/transaction/CreateTransactionCommand.ts
+export class CreateTransactionCommand {
+  constructor(private port: ICreateTransactionPort) {}
+
+  async execute(
+    dto: CreateTransactionRequestDto
+  ): Promise<Either<ApplicationError, void>> {
+    // 1. Validação client-side básica (para UX)
     const validation = CreateTransactionValidator.validate(dto);
     if (validation.hasError) {
       return Either.error(new ValidationError(validation.errors));
     }
 
-    // 2. Buscar conta
-    const accountResult = await this.accountService.getById(dto.accountId);
-    if (accountResult.hasError) {
-      return Either.error(new AccountNotFoundError(dto.accountId));
-    }
-
-    // 3. Criar transação usando Domain Model
-    const transaction = Transaction.create({
-      accountId: dto.accountId,
-      amount: Money.fromCents(dto.amountInCents),
-      description: dto.description,
-      type: TransactionType.fromString(dto.type)
-    });
-
-    if (transaction.hasError) {
-      return Either.error(new DomainError(transaction.error.message));
-    }
-
-    // 4. Persistir via Port
-    const saveResult = await this.transactionService.create(transaction.data!);
-    return saveResult;
+    // 2. Chamar port (que implementa a operação)
+    return this.port.execute(dto);
   }
 }
 ```
 
-#### Query Handler  
-```typescript
-// application/queries/GetBudgetSummaryQueryHandler.ts
-export class GetBudgetSummaryQueryHandler {
-  constructor(
-    private budgetService: IBudgetServicePort,
-    private transactionService: ITransactionServicePort
-  ) {}
+#### Query (Read Operation)
 
-  async handle(query: GetBudgetSummaryQuery): Promise<Either<QueryError, BudgetSummaryDto>> {
+```typescript
+// application/queries/budget/GetBudgetSummaryQuery.ts
+export class GetBudgetSummaryQuery {
+  constructor(private port: IGetBudgetSummaryPort) {}
+
+  async execute(
+    request: GetBudgetSummaryRequest
+  ): Promise<Either<QueryError, BudgetSummaryResponseDto>> {
     try {
-      // Buscar budget
-      const budget = await this.budgetService.getById(query.budgetId);
-      if (budget.hasError) {
-        return Either.error(new BudgetNotFoundError());
-      }
-
-      // Buscar transações do período
-      const transactions = await this.transactionService.getByPeriod(
-        query.budgetId, 
-        query.startDate, 
-        query.endDate
-      );
-
-      // Calcular métricas usando Domain Services
-      const summary = BudgetSummaryService.calculate(
-        budget.data!, 
-        transactions.data || []
-      );
-
-      // Mapear para DTO de resposta
-      return Either.success(BudgetSummaryMapper.toDto(summary));
+      // Chamar port (que implementa a operação)
+      return this.port.execute(request);
     } catch (error) {
-      return Either.error(new QueryError('Failed to get budget summary'));
+      return Either.error(new QueryError("Failed to get budget summary"));
     }
   }
 }
 ```
 
-#### Port Definition
+#### Port Definition (1 Interface por Operação)
+
 ```typescript
-// application/ports/IBudgetServicePort.ts
-export interface IBudgetServicePort {
-  getById(id: string): Promise<Either<ServiceError, Budget>>;
-  getByUserId(userId: string): Promise<Either<ServiceError, Budget[]>>;
-  create(budget: Budget): Promise<Either<ServiceError, void>>;
-  update(budget: Budget): Promise<Either<ServiceError, void>>;
-  delete(id: string): Promise<Either<ServiceError, void>>;
+// application/ports/mutations/budget/ICreateBudgetPort.ts
+export interface ICreateBudgetPort {
+  execute(request: CreateBudgetRequestDto): Promise<Either<ServiceError, void>>;
+}
+
+// application/ports/queries/budget/IGetBudgetByIdPort.ts
+export interface IGetBudgetByIdPort {
+  execute(id: string): Promise<Either<ServiceError, BudgetResponseDto>>;
+}
+
+// application/ports/queries/budget/IGetBudgetSummaryPort.ts
+export interface IGetBudgetSummaryPort {
+  execute(
+    request: GetBudgetSummaryRequest
+  ): Promise<Either<ServiceError, BudgetSummaryResponseDto>>;
 }
 ```
 
-#### DTO
+#### Validator
+
 ```typescript
-// application/dtos/CreateTransactionDto.ts
-export interface CreateTransactionDto {
-  readonly accountId: string;
-  readonly budgetId: string;
-  readonly amountInCents: number;
-  readonly description: string;
-  readonly type: string; // 'income' | 'expense'
-  readonly categoryId?: string;
-  readonly date?: string; // ISO date
+// application/validators/CreateTransactionValidator.ts
+export class CreateTransactionValidator {
+  static validate(dto: CreateTransactionRequestDto): ValidationResult {
+    const errors: string[] = [];
+
+    if (!dto.accountId?.trim()) {
+      errors.push("Account ID is required");
+    }
+
+    if (!dto.budgetId?.trim()) {
+      errors.push("Budget ID is required");
+    }
+
+    if (!dto.amountInCents || dto.amountInCents <= 0) {
+      errors.push("Amount must be greater than zero");
+    }
+
+    if (!dto.description?.trim()) {
+      errors.push("Description is required");
+    }
+
+    if (!dto.type || !["INCOME", "EXPENSE"].includes(dto.type)) {
+      errors.push("Type must be INCOME or EXPENSE");
+    }
+
+    return {
+      hasError: errors.length > 0,
+      errors,
+    };
+  }
 }
 ```
 
@@ -234,62 +208,75 @@ export interface CreateTransactionDto {
 ## 3. Infra - Adapters e Implementações
 
 ### Responsabilidades
+
 - **HTTP Adapters**: Implementação de Ports via HTTP/API (`HttpBudgetServiceAdapter`)
 - **Storage Adapters**: Persistência local (`LocalStoreAdapter` com IndexedDB)
 - **Auth Adapters**: Provedores de autenticação (`FirebaseAuthAdapter`)
-- **API Mappers**: Conversão entre DTOs de API e Domain Models
+- **Mappers**: Conversão de formatos apenas quando necessário
 - **External Services**: Integrações com serviços externos
 
 ### Características
+
 - **Port Implementations**: Implementa interfaces definidas em Application
 - **External Dependencies**: Única camada que conhece APIs, storage, etc.
 - **Framework Specific**: Pode usar Angular HttpClient, bibliotecas específicas
 - **Error Translation**: Converte erros externos para Domain Errors
+- **Direct DTOs**: Trabalha diretamente com DTOs na maioria dos casos
 
 ### Exemplos Práticos
 
-#### HTTP Adapter
+#### HTTP Adapter (1 Adapter por Port)
+
 ```typescript
-// infra/adapters/http/HttpBudgetServiceAdapter.ts
-@Injectable({ providedIn: 'root' })
-export class HttpBudgetServiceAdapter implements IBudgetServicePort {
+// infra/http/adapters/mutations/budget/HttpCreateBudgetAdapter.ts
+@Injectable({ providedIn: "root" })
+export class HttpCreateBudgetAdapter implements ICreateBudgetPort {
   constructor(private httpClient: IHttpClient) {}
 
-  async getById(id: string): Promise<Either<ServiceError, Budget>> {
+  async execute(
+    request: CreateBudgetRequestDto
+  ): Promise<Either<ServiceError, void>> {
     try {
-      const response = await this.httpClient.get<BudgetApiDto>(`/budget/${id}`);
-      const budget = BudgetApiMapper.toDomain(response);
-      return Either.success(budget);
+      await this.httpClient.post("/budget/create", request);
+      return Either.success(undefined);
+    } catch (error) {
+      return Either.error(new ServiceError("Failed to create budget"));
+    }
+  }
+}
+
+// infra/http/adapters/queries/budget/HttpGetBudgetByIdAdapter.ts
+@Injectable({ providedIn: "root" })
+export class HttpGetBudgetByIdAdapter implements IGetBudgetByIdPort {
+  constructor(private httpClient: IHttpClient) {}
+
+  async execute(id: string): Promise<Either<ServiceError, BudgetResponseDto>> {
+    try {
+      const response = await this.httpClient.get<BudgetResponseDto>(
+        `/budget/${id}`
+      );
+      return Either.success(response);
     } catch (error) {
       if (error.status === 404) {
         return Either.error(new BudgetNotFoundError(id));
       }
-      return Either.error(new ServiceError('Failed to fetch budget'));
-    }
-  }
-
-  async create(budget: Budget): Promise<Either<ServiceError, void>> {
-    try {
-      const dto = BudgetApiMapper.fromDomain(budget);
-      await this.httpClient.post('/budget/create', dto);
-      return Either.success(undefined);
-    } catch (error) {
-      return Either.error(new ServiceError('Failed to create budget'));
+      return Either.error(new ServiceError("Failed to fetch budget"));
     }
   }
 }
 ```
 
 #### Storage Adapter
+
 ```typescript
 // infra/adapters/storage/LocalStoreAdapter.ts
 export class LocalStoreAdapter implements ILocalStorePort {
   private db: IDBDatabase | null = null;
 
   async get<T>(storeName: string, key: string): Promise<T | null> {
-    const transaction = this.db!.transaction([storeName], 'readonly');
+    const transaction = this.db!.transaction([storeName], "readonly");
     const store = transaction.objectStore(storeName);
-    
+
     return new Promise((resolve, reject) => {
       const request = store.get(key);
       request.onsuccess = () => resolve(request.result || null);
@@ -298,9 +285,9 @@ export class LocalStoreAdapter implements ILocalStorePort {
   }
 
   async set<T>(storeName: string, key: string, value: T): Promise<void> {
-    const transaction = this.db!.transaction([storeName], 'readwrite');
+    const transaction = this.db!.transaction([storeName], "readwrite");
     const store = transaction.objectStore(storeName);
-    
+
     return new Promise((resolve, reject) => {
       const request = store.put(value, key);
       request.onsuccess = () => resolve();
@@ -310,26 +297,18 @@ export class LocalStoreAdapter implements ILocalStorePort {
 }
 ```
 
-#### API Mapper
+#### Mapper (Apenas quando necessário)
+
 ```typescript
-// infra/mappers/BudgetApiMapper.ts
-export class BudgetApiMapper {
-  static toDomain(dto: BudgetApiDto): Budget {
-    return Budget.fromSnapshot({
-      id: dto.id,
-      name: dto.name,
-      limitInCents: dto.limit_in_cents,
-      participants: dto.participants,
-      createdAt: new Date(dto.created_at)
-    });
+// infra/mappers/DateMapper.ts
+export class DateMapper {
+  // Apenas quando API retorna formato diferente do esperado
+  static toISOString(dateString: string): string {
+    return new Date(dateString).toISOString();
   }
 
-  static fromDomain(budget: Budget): CreateBudgetApiDto {
-    return {
-      name: budget.name,
-      limit_in_cents: budget.limit.cents,
-      participants: budget.participants
-    };
+  static toDisplayFormat(isoString: string): string {
+    return new Date(isoString).toLocaleDateString("pt-BR");
   }
 }
 ```
@@ -338,56 +317,60 @@ export class BudgetApiMapper {
 
 ## 4. UI (Angular) - Interface do Usuário
 
-### Responsabilidades  
+### Responsabilidades
+
 - **Components**: Componentes Angular específicos por feature
 - **Pages**: Componentes roteáveis que compõem widgets
 - **Routing**: Navegação e lazy loading
-- **State Management**: Estado local com Angular Signals
+- **State Management**: Estado local com Angular Signals usando DTOs
 - **Dependency Injection**: Conecta Application layer via Providers
 
 ### Características
+
 - **Framework Specific**: Totalmente Angular
 - **Reactive**: Angular Signals para estado reativo
 - **Stateless**: Delega lógica para Application layer
 - **Presentation**: Foco em apresentação e interação
+- **DTO-Based**: Trabalha diretamente com DTOs sem conversões
 
 ### Exemplos Práticos
 
 #### Page Component
+
 ```typescript
 // app/features/budgets/pages/budget-list.page.ts
 @Component({
-  selector: 'app-budget-list',
+  selector: "app-budget-list",
   template: `
     <os-page-header title="Meus Orçamentos" />
-    
+
     @if (loading()) {
-      <os-skeleton-list />
-    } @else if (budgets().length > 0) {
-      @for (budget of budgets(); track budget.id) {
-        <os-budget-card 
-          [budget]="budget" 
-          (onClick)="navigateToBudget(budget.id)" />
-      }
-    } @else {
-      <os-empty-state 
-        message="Nenhum orçamento encontrado"
-        (onActionClick)="createBudget()" />
+    <os-skeleton-list />
+    } @else if (budgets().length > 0) { @for (budget of budgets(); track
+    budget.id) {
+    <os-budget-card [budget]="budget" (onClick)="navigateToBudget(budget.id)" />
+    } } @else {
+    <os-empty-state
+      message="Nenhum orçamento encontrado"
+      (onActionClick)="createBudget()"
+    />
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BudgetListPage {
-  private getBudgetListUseCase = inject(GetBudgetListUseCase);
+  private getBudgetListQuery = inject(GetBudgetListQuery);
   private router = inject(Router);
 
-  // Estado local com signals
-  protected budgets = signal<Budget[]>([]);
+  // Estado local com signals usando DTOs
+  protected budgets = signal<BudgetResponseDto[]>([]);
   protected loading = signal(false);
   protected error = signal<string | null>(null);
 
   // Estado computado
-  protected isEmpty = computed(() => !this.loading() && this.budgets().length === 0);
+  protected isEmpty = computed(
+    () => !this.loading() && this.budgets().length === 0
+  );
 
   async ngOnInit() {
     await this.loadBudgets();
@@ -395,33 +378,34 @@ export class BudgetListPage {
 
   protected async loadBudgets() {
     this.loading.set(true);
-    
-    const result = await this.getBudgetListUseCase.execute();
-    
+
+    const result = await this.getBudgetListQuery.execute({});
+
     if (result.hasError) {
       this.error.set(result.error.message);
     } else {
       this.budgets.set(result.data!);
     }
-    
+
     this.loading.set(false);
   }
 
   protected navigateToBudget(budgetId: string) {
-    this.router.navigate(['/budgets', budgetId]);
+    this.router.navigate(["/budgets", budgetId]);
   }
 
   protected createBudget() {
-    this.router.navigate(['/budgets/create']);
+    this.router.navigate(["/budgets/create"]);
   }
 }
 ```
 
 #### Widget Component
+
 ```typescript
 // app/features/budgets/components/budget-card.component.ts
 @Component({
-  selector: 'app-budget-card',
+  selector: "app-budget-card",
   template: `
     <os-card [clickable]="true" (onClick)="onClick.emit()">
       <os-card-header>
@@ -430,34 +414,34 @@ export class BudgetListPage {
           {{ statusText() }}
         </os-badge>
       </os-card-header>
-      
+
       <os-card-content>
         <div class="budget-limit">
           <span>Limite: </span>
-          <os-money [amount]="budget().limit" />
+          <os-money [amountInCents]="budget().limitInCents" />
         </div>
-        
-        <div class="participants">
-          {{ participantCount() }} participante(s)
-        </div>
+
+        <div class="participants">{{ participantCount() }} participante(s)</div>
       </os-card-content>
     </os-card>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BudgetCardComponent {
-  // Modern Angular input/output
-  budget = input.required<Budget>();
+  // Modern Angular input/output usando DTO
+  budget = input.required<BudgetResponseDto>();
   onClick = output<void>();
 
   // Estado computado
-  protected participantCount = computed(() => this.budget().participants.length);
-  
+  protected participantCount = computed(
+    () => this.budget().participants.length
+  );
+
   protected statusVariant = computed(() => {
     const usage = this.budget().currentUsagePercentage;
-    return usage > 90 ? 'danger' : usage > 70 ? 'warning' : 'success';
+    return usage > 90 ? "danger" : usage > 70 ? "warning" : "success";
   });
-  
+
   protected statusText = computed(() => {
     const usage = this.budget().currentUsagePercentage;
     return `${usage}% utilizado`;
@@ -466,27 +450,34 @@ export class BudgetCardComponent {
 ```
 
 #### Service (DI Provider)
+
 ```typescript
-// app/providers/use-cases.provider.ts
-export function provideUseCases(): Provider[] {
+// app/providers/commands-queries.provider.ts
+export function provideCommandsAndQueries(): Provider[] {
   return [
-    // Use Cases
-    CreateBudgetUseCase,
-    GetBudgetListUseCase,
-    UpdateBudgetUseCase,
-    
-    // Query Handlers  
-    GetBudgetSummaryQueryHandler,
-    
-    // Port implementations injection
+    // Commands
+    CreateBudgetCommand,
+    UpdateBudgetCommand,
+    DeleteBudgetCommand,
+
+    // Queries
+    GetBudgetListQuery,
+    GetBudgetByIdQuery,
+    GetBudgetSummaryQuery,
+
+    // Port implementations injection (1 por operação)
     {
-      provide: IBudgetServicePort,
-      useClass: HttpBudgetServiceAdapter
+      provide: ICreateBudgetPort,
+      useClass: HttpCreateBudgetAdapter,
     },
     {
-      provide: ITransactionServicePort, 
-      useClass: HttpTransactionServiceAdapter
-    }
+      provide: IGetBudgetByIdPort,
+      useClass: HttpGetBudgetByIdAdapter,
+    },
+    {
+      provide: IGetBudgetListPort,
+      useClass: HttpGetBudgetListAdapter,
+    },
   ];
 }
 ```
@@ -496,12 +487,14 @@ export function provideUseCases(): Provider[] {
 ## 5. Shared/UI-Components - Design System
 
 ### Responsabilidades
+
 - **Abstraction Layer**: Encapsula Angular Material mantendo API própria
 - **Design Tokens**: Centraliza cores, espaçamentos e tipografia
 - **Accessibility**: Garante padrões a11y consistentes
 - **Migration Path**: Permite migração futura sem breaking changes
 
 ### Características
+
 - **Component API**: Interface própria, não Material diretamente
 - **Theming**: Customização sobre Material Design
 - **Atomic Design**: Atoms, Molecules, Organisms
@@ -510,40 +503,45 @@ export function provideUseCases(): Provider[] {
 ### Exemplos Práticos
 
 #### Atom Component
+
 ```typescript
 // app/shared/ui-components/atoms/os-button/os-button.component.ts
 @Component({
-  selector: 'os-button',
+  selector: "os-button",
   template: `
-    <button 
+    <button
       mat-button
       [color]="matColor()"
       [disabled]="disabled()"
       [attr.aria-label]="ariaLabel()"
-      (click)="onClick.emit($event)">
+      (click)="onClick.emit($event)"
+    >
       @if (loading()) {
-        <mat-spinner diameter="16" />
+      <mat-spinner diameter="16" />
       } @else {
-        <ng-content />
+      <ng-content />
       }
     </button>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OsButtonComponent {
   // Public API (OrçaSonhos specific)
-  variant = input<'primary' | 'secondary' | 'danger'>('primary');
+  variant = input<"primary" | "secondary" | "danger">("primary");
   disabled = input(false);
   loading = input(false);
   ariaLabel = input<string>();
-  
+
   onClick = output<MouseEvent>();
 
   // Internal Material mapping
   protected matColor = computed(() => {
     const variant = this.variant();
-    return variant === 'primary' ? 'primary' :
-           variant === 'danger' ? 'warn' : 'accent';
+    return variant === "primary"
+      ? "primary"
+      : variant === "danger"
+      ? "warn"
+      : "accent";
   });
 }
 ```
@@ -553,42 +551,37 @@ export class OsButtonComponent {
 ## Fluxo de Integração Entre Camadas
 
 ### Command Flow
+
 ```
-[UI Component] 
-    ↓ (user action)
-[Use Case] 
-    ↓ (orchestration)
-[Domain Models + Policies]
-    ↓ (business rules)
-[Port] 
-    ↓ (contract)
-[Adapter] 
-    ↓ (implementation)
-[External Service/API]
+[UI Component]
+    ↓ (user action - DTO)
+[Command]
+    ↓ (validação básica)
+[Port Interface]
+    ↓ (execute method)
+[HTTP Adapter]
+    ↓ (POST com DTO)
+[Backend API]
 ```
 
-### Query Flow  
+### Query Flow
+
 ```
 [UI Component]
     ↓ (data request)
-[Query Handler]
-    ↓ (query logic)
-[Port]
-    ↓ (contract) 
-[Adapter]
-    ↓ (implementation)
-[External Service/Cache]
-    ↓ (data)
-[Mapper]
-    ↓ (dto to domain)
-[Domain Model]
-    ↓ (presentation)
-[UI Component]
+[Query]
+    ↓ (execute method)
+[Port Interface]
+    ↓ (execute method)
+[HTTP Adapter]
+    ↓ (Response DTO)
+[UI Component] (exibe DTO diretamente)
 ```
 
 ---
 
 **Ver também:**
+
 - [Directory Structure](./directory-structure.md) - Organização física das camadas
 - [Dependency Rules](./dependency-rules.md) - Regras de dependência entre camadas
 - [Data Flow](./data-flow.md) - Fluxos de Commands e Queries detalhados
