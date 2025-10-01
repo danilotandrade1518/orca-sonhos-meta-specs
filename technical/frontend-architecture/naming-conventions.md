@@ -31,32 +31,33 @@ export class CriarTransacaoUseCase {
 
 ## Padrões de Classes
 
-### Models e Application Layer (PascalCase)
+### DTOs e Application Layer (PascalCase)
 
 ```typescript
-// ✅ Domain Models
-export class Transaction { }
-export class Money { }
-export class Budget { }
-export class Account { }
+// ✅ DTOs (Data Transfer Objects)
+export interface CreateTransactionRequestDto { }
+export interface TransactionResponseDto { }
+export interface BudgetListResponseDto { }
+export interface Money { } // Shared type
+export interface DateString { } // Shared type
 
-// ✅ Use Cases
-export class CreateTransactionUseCase { }
-export class UpdateBudgetUseCase { }
-export class TransferBetweenAccountsUseCase { }
+// ✅ Commands (Application Layer)
+export class CreateTransactionCommand { }
+export class UpdateBudgetCommand { }
+export class DeleteTransactionCommand { }
 
-// ✅ Query Handlers  
-export class GetBudgetSummaryQueryHandler { }
-export class GetTransactionListQueryHandler { }
+// ✅ Queries (Application Layer)
+export class GetBudgetSummaryQuery { }
+export class GetTransactionListQuery { }
+export class GetBudgetByIdQuery { }
 
-// ✅ Domain Services
-export class BudgetLimitPolicy { }
-export class TransferValidationService { }
+// ✅ Validators (Application Layer)
+export class CreateTransactionValidator { }
+export class UpdateBudgetValidator { }
 
-// ✅ Value Objects
-export class TransactionType { }
-export class AccountType { }
-export class Email { }
+// ✅ Transformers (Application Layer)
+export class TransactionTransformer { }
+export class BudgetTransformer { }
 ```
 
 ### Angular Components (kebab-case)
@@ -83,28 +84,33 @@ os-modal.component.ts
 ### Prefixo `I` Obrigatório
 
 ```typescript
-// ✅ Ports (Application Layer)
-export interface IBudgetServicePort { }
-export interface ITransactionServicePort { }
-export interface IAccountServicePort { }
+// ✅ Ports (Application Layer) - 1 interface por operação
+export interface ICreateBudgetPort { }
+export interface IUpdateBudgetPort { }
+export interface IDeleteBudgetPort { }
+export interface IGetBudgetByIdPort { }
+export interface IGetBudgetListPort { }
 
 // ✅ Infrastructure Contracts
 export interface IHttpClient { }
 export interface ILocalStorePort { }
 export interface IAuthTokenProvider { }
 
-// ✅ Domain Contracts
-export interface IEventBus { }
-export interface IDomainEventHandler { }
+// ✅ Event Handlers (se necessário)
+export interface ITransactionCreatedHandler { }
+export interface IBudgetUpdatedHandler { }
 ```
 
 ### Sufixos Específicos para Clareza
 
 ```typescript
-// ✅ Service Ports
-IBudgetServicePort
-ITransactionServicePort
-IAccountServicePort
+// ✅ Ports por Operação (Padrão Command)
+ICreateBudgetPort
+IUpdateBudgetPort
+IDeleteBudgetPort
+IGetBudgetByIdPort
+IGetBudgetListPort
+IGetBudgetSummaryPort
 
 // ✅ Infrastructure Ports
 ILocalStorePort
@@ -114,35 +120,39 @@ ICachePort
 // ✅ Event Handlers
 ITransactionCreatedHandler
 IBudgetUpdatedHandler
-
-// ✅ Repositories (se usados)
-ITransactionRepositoryPort
-IBudgetRepositoryPort
 ```
 
 ## Padrões de Arquivos
 
-### Models e Application (PascalCase)
+### DTOs e Application (PascalCase)
 
 ```typescript
-// ✅ Use Cases
-CreateTransactionUseCase.ts
-UpdateBudgetUseCase.ts
-GetBudgetSummaryQueryHandler.ts
-
-// ✅ Domain Models
-Transaction.ts
-Budget.ts
+// ✅ DTOs (Data Transfer Objects)
+CreateTransactionRequestDto.ts
+TransactionResponseDto.ts
+BudgetListResponseDto.ts
 Money.ts
-TransactionType.ts
+DateString.ts
 
-// ✅ Ports
-IBudgetServicePort.ts
-ITransactionServicePort.ts
+// ✅ Commands (Application Layer)
+CreateTransactionCommand.ts
+UpdateBudgetCommand.ts
+DeleteTransactionCommand.ts
 
-// ✅ DTOs
-CreateTransactionDto.ts
-BudgetSummaryDto.ts
+// ✅ Queries (Application Layer)
+GetBudgetSummaryQuery.ts
+GetTransactionListQuery.ts
+GetBudgetByIdQuery.ts
+
+// ✅ Ports (1 interface por operação)
+ICreateBudgetPort.ts
+IUpdateBudgetPort.ts
+IGetBudgetByIdPort.ts
+IGetBudgetListPort.ts
+
+// ✅ Validators
+CreateTransactionValidator.ts
+UpdateBudgetValidator.ts
 ```
 
 ### Angular UI (kebab-case)
@@ -166,15 +176,22 @@ notification.service.ts
 ### Infrastructure (PascalCase para classes, kebab-case para arquivos)
 
 ```typescript
-// ✅ Adapters
-HttpBudgetServiceAdapter.ts
-FirebaseAuthAdapter.ts
-IndexedDBAdapter.ts
+// ✅ HTTP Adapters (1 adapter por port)
+HttpCreateBudgetAdapter.ts
+HttpUpdateBudgetAdapter.ts
+HttpGetBudgetByIdAdapter.ts
+HttpGetBudgetListAdapter.ts
+HttpCreateTransactionAdapter.ts
 
-// ✅ Mappers
-TransactionApiMapper.ts
-BudgetApiMapper.ts
-MoneyMapper.ts
+// ✅ Storage Adapters
+LocalStoreAdapter.ts
+IndexedDBAdapter.ts
+FirebaseAuthAdapter.ts
+
+// ✅ Mappers (apenas quando necessário)
+DisplayMapper.ts
+DateFormatter.ts
+MoneyFormatter.ts
 ```
 
 ## Padrões de Pastas
@@ -182,18 +199,39 @@ MoneyMapper.ts
 ### Todas em kebab-case
 
 ```
-/use-cases
-/query-handlers  
-/domain-services
-/value-objects
+/dtos
+/commands
+/queries
+/validators
+/transformers
+/ports
 /ui-components
-/backend-architecture
 /auth-services
 ```
 
 ### Organização por Contexto
 
 ```
+/dtos
+  /budget
+    /request
+    /response
+  /transaction
+    /request
+    /response
+  /shared
+
+/application
+  /commands
+    /budget
+    /transaction
+  /queries
+    /budget
+    /transaction
+  /ports
+    /mutations
+    /queries
+
 /features
   /budgets
   /transactions
@@ -437,7 +475,7 @@ describe('CreateTransactionUseCase', () => {
   "compilerOptions": {
     "baseUrl": "./src",
     "paths": {
-      "@models/*": ["models/*"],
+      "@dtos/*": ["dtos/*"],
       "@application/*": ["application/*"], 
       "@infra/*": ["infra/*"],
       "@app/*": ["app/*"],
@@ -453,23 +491,30 @@ describe('CreateTransactionUseCase', () => {
 
 #### Entre Camadas Diferentes (Path Aliases)
 ```typescript
-// ✅ Application importando Domain
-import { Transaction } from '@models/entities/Transaction';
-import { Money } from '@models/value-objects/Money';
+// ✅ Application importando DTOs
+import { CreateTransactionRequestDto } from '@dtos/transaction/request/CreateTransactionRequestDto';
+import { BudgetResponseDto } from '@dtos/budget/response/BudgetResponseDto';
+import { Money } from '@dtos/shared/Money';
 
-// ✅ Infra implementando Application
-import { IBudgetServicePort } from '@application/ports/IBudgetServicePort';
-import { CreateBudgetDto } from '@application/dtos/CreateBudgetDto';
+// ✅ Infra implementando Application (1 interface por operação)
+import { ICreateBudgetPort } from '@application/ports/mutations/budget/ICreateBudgetPort';
+import { IGetBudgetByIdPort } from '@application/ports/queries/budget/IGetBudgetByIdPort';
 
-// ✅ UI consumindo Application  
-import { CreateBudgetUseCase } from '@application/use-cases/CreateBudgetUseCase';
+// ✅ UI consumindo Application (padrão Command)
+import { CreateBudgetCommand } from '@application/commands/budget/CreateBudgetCommand';
+import { GetBudgetByIdQuery } from '@application/queries/budget/GetBudgetByIdQuery';
 ```
 
 #### Mesma Camada (Imports Relativos)
 ```typescript
-// ✅ Dentro de use-cases
-import { CreateBudgetDto } from '../dtos/CreateBudgetDto';
-import { BudgetValidator } from './validators/BudgetValidator';
+// ✅ Dentro de commands/budget
+import { CreateBudgetRequestDto } from '@dtos/budget/request/CreateBudgetRequestDto';
+import { ICreateBudgetPort } from '../../ports/mutations/budget/ICreateBudgetPort';
+import { CreateBudgetValidator } from '../../validators/budget/CreateBudgetValidator';
+
+// ✅ Dentro de queries/budget
+import { BudgetResponseDto } from '@dtos/budget/response/BudgetResponseDto';
+import { IGetBudgetByIdPort } from '../../ports/queries/budget/IGetBudgetByIdPort';
 
 // ✅ Dentro de components
 import { BudgetCardComponent } from './budget-card.component';
@@ -481,22 +526,22 @@ import { BudgetService } from '../services/budget.service';
 ### Commit Messages
 
 ```
-feat: add CreateTransactionUseCase with validation
-fix: handle insufficient balance error in Account domain model
+feat: add CreateTransactionCommand with DTO validation
+fix: handle insufficient balance error in Transaction DTO
 refactor: extract HTTP error handling to dedicated service  
-docs: update frontend architecture documentation
-test: add integration tests for HttpBudgetServiceAdapter
+docs: update frontend architecture documentation for DTO-First
+test: add integration tests for HttpCreateBudgetAdapter
 style: apply consistent naming conventions to UI components
 ```
 
 ### Branch Naming
 
 ```
-feature/create-transaction-use-case
-feature/budget-summary-page
+feature/create-transaction-command
+feature/budget-summary-query
 bugfix/money-input-validation
 refactor/http-client-error-handling
-docs/frontend-architecture-update
+docs/dto-first-architecture-update
 ```
 
 ---
@@ -504,4 +549,5 @@ docs/frontend-architecture-update
 **Ver também:**
 - [Directory Structure](./directory-structure.md) - Como organizar arquivos fisicamente
 - [Layer Responsibilities](./layer-responsibilities.md) - Responsabilidades por camada  
+- [DTO Conventions](./dto-conventions.md) - Convenções específicas para DTOs
 - [UI System](./ui-system.md) - Convenções específicas do Design System

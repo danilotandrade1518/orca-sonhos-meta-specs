@@ -2,12 +2,13 @@
 
 ## Alinhamento Arquitetural
 
-O frontend está totalmente alinhado com a arquitetura backend, seguindo os mesmos padrões:
+O frontend está totalmente alinhado com a arquitetura backend através da **DTO-First Architecture**:
 
 - **CQRS**: Separação entre Commands (mutations) e Queries (reads)
 - **Command-Style Endpoints**: `POST /<context>/<action>` para mutações
 - **Either Pattern**: Tratamento de erros consistente
-- **Domain Alignment**: Mesmo vocabulário ubíquo
+- **DTO-First**: DTOs fluem diretamente entre frontend e backend
+- **API Alignment**: Contratos de API como fonte da verdade
 
 ## Contratos de API
 
@@ -44,47 +45,67 @@ GET /goal/list?budgetId=123
 
 ## Port Definitions (Application Layer)
 
-### Service Ports por Contexto
+### Ports por Operação (Padrão Command)
 
 ```typescript
-// application/ports/IBudgetServicePort.ts
-export interface IBudgetServicePort {
-  // Commands
-  create(budget: Budget): Promise<Either<ServiceError, void>>;
-  update(budget: Budget): Promise<Either<ServiceError, void>>;
-  delete(id: string): Promise<Either<ServiceError, void>>;
-  addParticipant(budgetId: string, userId: string): Promise<Either<ServiceError, void>>;
-  
-  // Queries  
-  getById(id: string): Promise<Either<ServiceError, Budget>>;
-  getByUserId(userId: string): Promise<Either<ServiceError, Budget[]>>;
-  getSummary(budgetId: string, period: string): Promise<Either<ServiceError, BudgetSummaryDto>>;
+// application/ports/mutations/budget/ICreateBudgetPort.ts
+export interface ICreateBudgetPort {
+  execute(request: CreateBudgetRequestDto): Promise<Either<ServiceError, void>>;
 }
 
-// application/ports/ITransactionServicePort.ts
-export interface ITransactionServicePort {
-  // Commands
-  create(transaction: Transaction): Promise<Either<ServiceError, void>>;
-  update(transaction: Transaction): Promise<Either<ServiceError, void>>;
-  delete(id: string): Promise<Either<ServiceError, void>>;
-  
-  // Queries
-  getById(id: string): Promise<Either<ServiceError, Transaction>>;
-  getByBudget(budgetId: string, params?: TransactionQueryParams): Promise<Either<ServiceError, Transaction[]>>;
-  getByAccount(accountId: string, params?: TransactionQueryParams): Promise<Either<ServiceError, Transaction[]>>;
+// application/ports/mutations/budget/IUpdateBudgetPort.ts
+export interface IUpdateBudgetPort {
+  execute(request: UpdateBudgetRequestDto): Promise<Either<ServiceError, void>>;
 }
 
-// application/ports/IAccountServicePort.ts
-export interface IAccountServicePort {
-  // Commands  
-  create(account: Account): Promise<Either<ServiceError, void>>;
-  update(account: Account): Promise<Either<ServiceError, void>>;
-  delete(id: string): Promise<Either<ServiceError, void>>;
-  transferMoney(params: TransferMoneyParams): Promise<Either<ServiceError, void>>;
-  
-  // Queries
-  getById(id: string): Promise<Either<ServiceError, Account>>;
-  getByBudget(budgetId: string): Promise<Either<ServiceError, Account[]>>;
+// application/ports/mutations/budget/IDeleteBudgetPort.ts
+export interface IDeleteBudgetPort {
+  execute(id: string): Promise<Either<ServiceError, void>>;
+}
+
+// application/ports/mutations/budget/IAddParticipantPort.ts
+export interface IAddParticipantPort {
+  execute(request: AddParticipantRequestDto): Promise<Either<ServiceError, void>>;
+}
+
+// application/ports/queries/budget/IGetBudgetByIdPort.ts
+export interface IGetBudgetByIdPort {
+  execute(id: string): Promise<Either<ServiceError, BudgetResponseDto>>;
+}
+
+// application/ports/queries/budget/IGetBudgetListPort.ts
+export interface IGetBudgetListPort {
+  execute(request: GetBudgetListRequest): Promise<Either<ServiceError, BudgetListResponseDto>>;
+}
+
+// application/ports/queries/budget/IGetBudgetSummaryPort.ts
+export interface IGetBudgetSummaryPort {
+  execute(request: GetBudgetSummaryRequest): Promise<Either<ServiceError, BudgetSummaryResponseDto>>;
+}
+
+// application/ports/mutations/transaction/ICreateTransactionPort.ts
+export interface ICreateTransactionPort {
+  execute(request: CreateTransactionRequestDto): Promise<Either<ServiceError, void>>;
+}
+
+// application/ports/mutations/transaction/IUpdateTransactionPort.ts
+export interface IUpdateTransactionPort {
+  execute(request: UpdateTransactionRequestDto): Promise<Either<ServiceError, void>>;
+}
+
+// application/ports/mutations/transaction/IDeleteTransactionPort.ts
+export interface IDeleteTransactionPort {
+  execute(id: string): Promise<Either<ServiceError, void>>;
+}
+
+// application/ports/queries/transaction/IGetTransactionByIdPort.ts
+export interface IGetTransactionByIdPort {
+  execute(id: string): Promise<Either<ServiceError, TransactionResponseDto>>;
+}
+
+// application/ports/queries/transaction/IGetTransactionListPort.ts
+export interface IGetTransactionListPort {
+  execute(request: GetTransactionListRequest): Promise<Either<ServiceError, TransactionListResponseDto>>;
 }
 ```
 
@@ -257,63 +278,20 @@ export class FetchHttpClient implements IHttpClient {
 
 ## HTTP Adapters (Infrastructure)
 
-### Budget Service Adapter
+### Budget Adapters (1 Adapter por Port)
+
 ```typescript
-// infra/adapters/http/HttpBudgetServiceAdapter.ts
+// infra/http/adapters/mutations/budget/HttpCreateBudgetAdapter.ts
 @Injectable({ providedIn: 'root' })
-export class HttpBudgetServiceAdapter implements IBudgetServicePort {
+export class HttpCreateBudgetAdapter implements ICreateBudgetPort {
   constructor(private httpClient: IHttpClient) {}
 
-  async create(budget: Budget): Promise<Either<ServiceError, void>> {
+  async execute(request: CreateBudgetRequestDto): Promise<Either<ServiceError, void>> {
     try {
-      const createDto = BudgetApiMapper.toCreateDto(budget);
-      
-      await this.httpClient.post('/budget/create', createDto);
+      // DTOs fluem diretamente - sem mapeamentos
+      await this.httpClient.post('/budget/create', request);
       
       return Either.success(undefined);
-    } catch (error) {
-      return Either.error(this.handleError(error));
-    }
-  }
-
-  async update(budget: Budget): Promise<Either<ServiceError, void>> {
-    try {
-      const updateDto = BudgetApiMapper.toUpdateDto(budget);
-      
-      await this.httpClient.post('/budget/update', {
-        id: budget.id,
-        ...updateDto
-      });
-      
-      return Either.success(undefined);
-    } catch (error) {
-      return Either.error(this.handleError(error));
-    }
-  }
-
-  async getById(id: string): Promise<Either<ServiceError, Budget>> {
-    try {
-      const response = await this.httpClient.get<BudgetApiDto>(`/budget/${id}`);
-      const budget = BudgetApiMapper.toDomain(response);
-      
-      return Either.success(budget);
-    } catch (error) {
-      return Either.error(this.handleError(error));
-    }
-  }
-
-  async getSummary(
-    budgetId: string, 
-    period: string
-  ): Promise<Either<ServiceError, BudgetSummaryDto>> {
-    try {
-      const response = await this.httpClient.get<BudgetSummaryApiDto>(
-        `/budget/${budgetId}/summary?period=${period}`
-      );
-      
-      const summary = BudgetSummaryMapper.fromApiDto(response);
-      
-      return Either.success(summary);
     } catch (error) {
       return Either.error(this.handleError(error));
     }
@@ -323,156 +301,227 @@ export class HttpBudgetServiceAdapter implements IBudgetServicePort {
     if (error instanceof HttpError) {
       switch (error.status) {
         case 400:
-          return new ValidationError('Invalid budget data');
+          return new ValidationError('Dados inválidos');
         case 401:
-          return new UnauthorizedError('access budget');
+          return new UnauthorizedError('acessar orçamento');
         case 403:
-          return new ForbiddenError('budget access');
-        case 404:
-          return new NotFoundError('Budget not found');
+          return new ForbiddenError('acesso ao orçamento');
         case 409:
-          return new ConflictError('Budget conflict');
+          return new ConflictError('Conflito no orçamento');
         case 0:
-          return new NetworkError('No connection');
+          return new NetworkError('Sem conexão');
         default:
           return new ServiceError(`HTTP ${error.status}: ${error.message}`);
       }
     }
     
-    return new ServiceError('Unknown error');
+    return new ServiceError('Erro desconhecido');
   }
 }
-```
 
-### Transaction Service Adapter  
-```typescript
-// infra/adapters/http/HttpTransactionServiceAdapter.ts
+// infra/http/adapters/mutations/budget/HttpUpdateBudgetAdapter.ts
 @Injectable({ providedIn: 'root' })
-export class HttpTransactionServiceAdapter implements ITransactionServicePort {
+export class HttpUpdateBudgetAdapter implements IUpdateBudgetPort {
   constructor(private httpClient: IHttpClient) {}
 
-  async create(transaction: Transaction): Promise<Either<ServiceError, void>> {
+  async execute(request: UpdateBudgetRequestDto): Promise<Either<ServiceError, void>> {
     try {
-      const createDto: CreateTransactionApiDto = {
-        account_id: transaction.accountId,
-        budget_id: transaction.budgetId,
-        amount_in_cents: transaction.amount.cents,
-        description: transaction.description,
-        transaction_type: transaction.type.value,
-        category_id: transaction.categoryId,
-        transaction_date: transaction.date.toISOString()
-      };
-      
-      await this.httpClient.post('/transaction/create', createDto);
+      // DTOs fluem diretamente
+      await this.httpClient.post('/budget/update', request);
       
       return Either.success(undefined);
     } catch (error) {
-      return Either.error(this.handleTransactionError(error));
+      return Either.error(this.handleError(error));
     }
   }
 
-  async getByBudget(
-    budgetId: string,
-    params?: TransactionQueryParams
-  ): Promise<Either<ServiceError, Transaction[]>> {
+  private handleError(error: unknown): ServiceError {
+    // ... mesmo tratamento de erro
+  }
+}
+
+// infra/http/adapters/queries/budget/HttpGetBudgetByIdAdapter.ts
+@Injectable({ providedIn: 'root' })
+export class HttpGetBudgetByIdAdapter implements IGetBudgetByIdPort {
+  constructor(private httpClient: IHttpClient) {}
+
+  async execute(id: string): Promise<Either<ServiceError, BudgetResponseDto>> {
     try {
-      const queryParams = this.buildQueryString(params);
-      const url = `/transaction/list?budgetId=${budgetId}${queryParams}`;
+      // DTOs fluem diretamente
+      const response = await this.httpClient.get<BudgetResponseDto>(`/budget/${id}`);
       
-      const response = await this.httpClient.get<TransactionListApiDto>(url);
-      const transactions = response.transactions.map(dto => 
-        TransactionApiMapper.toDomain(dto)
+      return Either.success(response);
+    } catch (error) {
+      return Either.error(this.handleError(error));
+    }
+  }
+
+  private handleError(error: unknown): ServiceError {
+    // ... tratamento de erro
+  }
+}
+
+// infra/http/adapters/queries/budget/HttpGetBudgetSummaryAdapter.ts
+@Injectable({ providedIn: 'root' })
+export class HttpGetBudgetSummaryAdapter implements IGetBudgetSummaryPort {
+  constructor(private httpClient: IHttpClient) {}
+
+  async execute(request: GetBudgetSummaryRequest): Promise<Either<ServiceError, BudgetSummaryResponseDto>> {
+    try {
+      // DTOs fluem diretamente
+      const response = await this.httpClient.get<BudgetSummaryResponseDto>(
+        `/budget/${request.budgetId}/summary?period=${request.period}`
       );
       
-      return Either.success(transactions);
+      return Either.success(response);
     } catch (error) {
-      return Either.error(this.handleTransactionError(error));
+      return Either.error(this.handleError(error));
     }
   }
 
-  private buildQueryString(params?: TransactionQueryParams): string {
-    if (!params) return '';
-    
+  private handleError(error: unknown): ServiceError {
+    // ... tratamento de erro
+  }
+}
+```
+
+### Transaction Adapters (1 Adapter por Port)
+
+```typescript
+// infra/http/adapters/mutations/transaction/HttpCreateTransactionAdapter.ts
+@Injectable({ providedIn: 'root' })
+export class HttpCreateTransactionAdapter implements ICreateTransactionPort {
+  constructor(private httpClient: IHttpClient) {}
+
+  async execute(request: CreateTransactionRequestDto): Promise<Either<ServiceError, void>> {
+    try {
+      // DTOs fluem diretamente - sem mapeamentos
+      await this.httpClient.post('/transaction/create', request);
+      
+      return Either.success(undefined);
+    } catch (error) {
+      return Either.error(this.handleError(error));
+    }
+  }
+
+  private handleError(error: unknown): ServiceError {
+    // ... tratamento de erro
+  }
+}
+
+// infra/http/adapters/queries/transaction/HttpGetTransactionListAdapter.ts
+@Injectable({ providedIn: 'root' })
+export class HttpGetTransactionListAdapter implements IGetTransactionListPort {
+  constructor(private httpClient: IHttpClient) {}
+
+  async execute(request: GetTransactionListRequest): Promise<Either<ServiceError, TransactionListResponseDto>> {
+    try {
+      // DTOs fluem diretamente
+      const queryParams = this.buildQueryString(request);
+      const url = `/transaction/list?${queryParams}`;
+      
+      const response = await this.httpClient.get<TransactionListResponseDto>(url);
+      
+      return Either.success(response);
+    } catch (error) {
+      return Either.error(this.handleError(error));
+    }
+  }
+
+  private buildQueryString(request: GetTransactionListRequest): string {
     const searchParams = new URLSearchParams();
     
-    if (params.limit) {
-      searchParams.set('limit', params.limit.toString());
+    if (request.budgetId) {
+      searchParams.set('budgetId', request.budgetId);
     }
     
-    if (params.offset) {
-      searchParams.set('offset', params.offset.toString());
+    if (request.accountId) {
+      searchParams.set('accountId', request.accountId);
     }
     
-    if (params.startDate) {
-      searchParams.set('startDate', params.startDate.toISOString());
+    if (request.limit) {
+      searchParams.set('limit', request.limit.toString());
     }
     
-    if (params.endDate) {
-      searchParams.set('endDate', params.endDate.toISOString());
+    if (request.offset) {
+      searchParams.set('offset', request.offset.toString());
     }
     
-    if (params.categoryId) {
-      searchParams.set('categoryId', params.categoryId);
+    if (request.startDate) {
+      searchParams.set('startDate', request.startDate);
     }
     
-    return searchParams.toString() ? `&${searchParams.toString()}` : '';
+    if (request.endDate) {
+      searchParams.set('endDate', request.endDate);
+    }
+    
+    if (request.categoryId) {
+      searchParams.set('categoryId', request.categoryId);
+    }
+    
+    return searchParams.toString();
+  }
+
+  private handleError(error: unknown): ServiceError {
+    // ... tratamento de erro
   }
 }
 ```
 
-## API Mappers (Data Transformation)
+## DTO-First Integration
 
-### Money Value Handling
+### DTOs como Contratos Diretos
+
+Na DTO-First Architecture, os DTOs são os contratos diretos entre frontend e backend, eliminando a necessidade de mapeamentos complexos:
+
 ```typescript
-// infra/mappers/MoneyMapper.ts
-export class MoneyMapper {
-  static toApiCents(money: Money): number {
-    return money.cents;
-  }
-  
-  static fromApiCents(cents: number): Money {
-    return Money.fromCents(cents);
-  }
-  
-  static toApiReais(money: Money): number {
-    return money.reais;
-  }
-  
-  static fromApiReais(reais: number): Money {
-    return Money.fromReais(reais);
-  }
+// DTOs fluem diretamente entre as camadas
+// Request DTOs → Backend API
+// Response DTOs ← Backend API
+
+// Exemplo: CreateTransactionRequestDto
+export interface CreateTransactionRequestDto {
+  readonly accountId: string;
+  readonly budgetId: string;
+  readonly amountInCents: number; // Money como number (centavos)
+  readonly description: string;
+  readonly type: "INCOME" | "EXPENSE"; // Enum como string literal
+  readonly categoryId?: string;
+  readonly date?: string; // ISO date string
+}
+
+// Exemplo: TransactionResponseDto
+export interface TransactionResponseDto {
+  readonly id: string;
+  readonly accountId: string;
+  readonly budgetId: string;
+  readonly amountInCents: number;
+  readonly description: string;
+  readonly type: "INCOME" | "EXPENSE";
+  readonly categoryId?: string;
+  readonly date: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
 }
 ```
 
-### Domain ↔ API Mapping
+### Transformações Leves (Quando Necessário)
+
+Apenas quando formato da API difere do necessário para UI:
+
 ```typescript
-// infra/mappers/TransactionApiMapper.ts
-export class TransactionApiMapper {
-  static toDomain(dto: TransactionApiDto): Transaction {
-    return Transaction.fromSnapshot({
-      id: dto.id,
-      accountId: dto.account_id,
-      budgetId: dto.budget_id,
-      amount: MoneyMapper.fromApiCents(dto.amount_in_cents),
-      description: dto.description,
-      type: TransactionType.fromString(dto.transaction_type),
-      categoryId: dto.category_id,
-      date: new Date(dto.transaction_date),
-      createdAt: new Date(dto.created_at),
-      updatedAt: new Date(dto.updated_at)
-    });
+// infra/mappers/DisplayMapper.ts
+export class DisplayMapper {
+  // Formatação para exibição (quando necessário)
+  static toDisplayMoney(amountInCents: number): string {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(amountInCents / 100);
   }
   
-  static toCreateDto(transaction: Transaction): CreateTransactionApiDto {
-    return {
-      account_id: transaction.accountId,
-      budget_id: transaction.budgetId,
-      amount_in_cents: MoneyMapper.toApiCents(transaction.amount),
-      description: transaction.description,
-      transaction_type: transaction.type.value,
-      category_id: transaction.categoryId,
-      transaction_date: transaction.date.toISOString()
-    };
+  static toDisplayDate(isoString: string): string {
+    return new Date(isoString).toLocaleDateString('pt-BR');
   }
 }
 ```
@@ -659,4 +708,6 @@ export class ErrorResponseInterceptor implements IResponseInterceptor {
 **Ver também:**
 - [Authentication](./authentication.md) - Como tokens são gerenciados e enviados
 - [Data Flow](./data-flow.md) - Fluxos de Commands e Queries detalhados
+- [DTO-First Principles](./dto-first-principles.md) - Princípios fundamentais da arquitetura
+- [DTO Conventions](./dto-conventions.md) - Convenções para DTOs
 - [Offline Strategy](./offline-strategy.md) - Integração offline com sync de comandos

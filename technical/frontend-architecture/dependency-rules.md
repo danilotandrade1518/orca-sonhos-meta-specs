@@ -2,7 +2,7 @@
 
 ## Arquitetura de Dependências
 
-A arquitetura frontend segue Clean Architecture com **inversão de dependências**, onde camadas internas não conhecem camadas externas.
+A arquitetura frontend segue **DTO-First Architecture** com **inversão de dependências**, onde camadas internas não conhecem camadas externas.
 
 ```
 ┌─────────────────────────────────────┐
@@ -10,108 +10,120 @@ A arquitetura frontend segue Clean Architecture com **inversão de dependências
 ├─────────────────────────────────────┤
 │        Infra (Adapters)             │ ← Implementa Application
 ├─────────────────────────────────────┤
-│    Application (Use Cases)          │ ← Usa Models, define Ports
+│    Application (Commands/Queries)   │ ← Usa DTOs, define Ports
 ├─────────────────────────────────────┤
-│        Models (Domain)              │ ← Não depende de nada
+│           DTOs (Contratos)          │ ← Não depende de nada
 └─────────────────────────────────────┘
 ```
 
 ## Regras por Camada
 
-### 1. Models (Domain) - Isolamento Total
+### 1. DTOs (Contratos) - Isolamento Total
 
 **Pode Importar:**
+
 - ✅ Nada interno (apenas TypeScript stdlib)
 - ✅ Utilitários puros (lodash, date-fns)
 
 **NÃO Pode Importar:**
+
 - ❌ Application layer
-- ❌ Infrastructure layer  
+- ❌ Infrastructure layer
 - ❌ UI layer (Angular)
 - ❌ Bibliotecas com side effects
 
 ```typescript
-// ✅ PERMITIDO - Models
-// models/entities/Transaction.ts
-export class Transaction {
-  // Apenas TypeScript puro + utilitários puros
-  private constructor(
-    private readonly _id: string,
-    private readonly _amount: Money, // Outro domain model
-    private readonly _date: Date     // Stdlib
-  ) {}
+// ✅ PERMITIDO - DTOs
+// dtos/transaction/response/TransactionResponseDto.ts
+export interface TransactionResponseDto {
+  readonly id: string;
+  readonly accountId: string;
+  readonly budgetId: string;
+  readonly amountInCents: number;
+  readonly description: string;
+  readonly type: "INCOME" | "EXPENSE";
+  readonly date: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
 }
 
-// ❌ PROIBIDO - Models importando outras camadas
-import { ITransactionRepository } from '@application/ports/ITransactionRepository'; // ❌
-import { HttpClient } from '@angular/common/http'; // ❌
-import { Component } from '@angular/core'; // ❌
+// dtos/shared/Money.ts
+export type Money = number; // Sempre em centavos
+
+// ❌ PROIBIDO - DTOs importando outras camadas
+import { ITransactionRepository } from "@application/ports/ITransactionRepository"; // ❌
+import { HttpClient } from "@angular/common/http"; // ❌
+import { Component } from "@angular/core"; // ❌
 ```
 
-### 2. Application - Usa Models, Define Ports
+### 2. Application - Usa DTOs, Define Ports
 
 **Pode Importar:**
-- ✅ Models (domain entities, value objects)
+
+- ✅ DTOs (request/response DTOs, shared types)
 - ✅ Utilitários puros
 - ✅ TypeScript stdlib
 
 **NÃO Pode Importar:**
+
 - ❌ Infrastructure implementations
 - ❌ UI layer (Angular)
 - ❌ HTTP libraries, storage libs
 
 ```typescript
 // ✅ PERMITIDO - Application
-// application/use-cases/CreateTransactionUseCase.ts
-import { Transaction } from '@models/entities/Transaction';        // ✅ Domain
-import { Money } from '@models/value-objects/Money';               // ✅ Domain
-import { ITransactionServicePort } from './ports/ITransactionServicePort'; // ✅ Own layer
+// application/commands/transaction/CreateTransactionCommand.ts
+import { CreateTransactionRequestDto } from "@dtos/transaction/request/CreateTransactionRequestDto"; // ✅ DTO
+import { ICreateTransactionPort } from "../ports/mutations/transaction/ICreateTransactionPort"; // ✅ Own layer
 
-export class CreateTransactionUseCase {
+export class CreateTransactionCommand {
   constructor(
-    private transactionService: ITransactionServicePort  // Port interface, não implementação
+    private port: ICreateTransactionPort // Port interface, não implementação
   ) {}
 }
 
 // ❌ PROIBIDO - Application importando Infra ou UI
-import { HttpTransactionServiceAdapter } from '@infra/adapters/HttpTransactionServiceAdapter'; // ❌
-import { Component } from '@angular/core'; // ❌
+import { HttpCreateTransactionAdapter } from "@infra/adapters/HttpCreateTransactionAdapter"; // ❌
+import { Component } from "@angular/core"; // ❌
 ```
 
 ### 3. Infrastructure - Implementa Application
 
 **Pode Importar:**
+
 - ✅ Application (ports, DTOs)
-- ✅ Models (para mappers)
+- ✅ DTOs (para trabalhar diretamente)
 - ✅ Bibliotecas externas (HTTP, storage, etc.)
 - ✅ Angular (se necessário para providers)
 
 **NÃO Pode Importar:**
+
 - ❌ UI components específicos
 - ❌ Page components
 
 ```typescript
-// ✅ PERMITIDO - Infrastructure  
-// infra/adapters/http/HttpTransactionServiceAdapter.ts
-import { ITransactionServicePort } from '@application/ports/ITransactionServicePort'; // ✅
-import { Transaction } from '@models/entities/Transaction'; // ✅ Para mappers
-import { HttpClient } from '@angular/common/http';          // ✅ External lib
-import { Injectable } from '@angular/core';                // ✅ Para DI
+// ✅ PERMITIDO - Infrastructure
+// infra/http/adapters/mutations/transaction/HttpCreateTransactionAdapter.ts
+import { ICreateTransactionPort } from "@application/ports/mutations/transaction/ICreateTransactionPort"; // ✅
+import { CreateTransactionRequestDto } from "@dtos/transaction/request/CreateTransactionRequestDto"; // ✅ DTO
+import { HttpClient } from "@angular/common/http"; // ✅ External lib
+import { Injectable } from "@angular/core"; // ✅ Para DI
 
-@Injectable({ providedIn: 'root' })
-export class HttpTransactionServiceAdapter implements ITransactionServicePort {
+@Injectable({ providedIn: "root" })
+export class HttpCreateTransactionAdapter implements ICreateTransactionPort {
   constructor(private http: HttpClient) {} // ✅
 }
 
 // ❌ PROIBIDO - Infra importando UI específico
-import { TransactionListComponent } from '@app/features/transactions/transaction-list.component'; // ❌
+import { TransactionListComponent } from "@app/features/transactions/transaction-list.component"; // ❌
 ```
 
 ### 4. UI (Angular) - Pode Importar Tudo
 
 **Pode Importar:**
-- ✅ Application (use cases, query handlers)
-- ✅ Models (para tipos)
+
+- ✅ Application (commands, queries)
+- ✅ DTOs (para tipos)
 - ✅ Infra (apenas para DI providers)
 - ✅ Shared UI components
 - ✅ Angular framework
@@ -119,14 +131,14 @@ import { TransactionListComponent } from '@app/features/transactions/transaction
 ```typescript
 // ✅ PERMITIDO - UI
 // app/features/transactions/pages/create-transaction.page.ts
-import { CreateTransactionUseCase } from '@application/use-cases/CreateTransactionUseCase'; // ✅
-import { Transaction } from '@models/entities/Transaction';     // ✅ Para tipos
+import { CreateTransactionCommand } from '@application/commands/transaction/CreateTransactionCommand'; // ✅
+import { CreateTransactionRequestDto } from '@dtos/transaction/request/CreateTransactionRequestDto'; // ✅ Para tipos
 import { Component, inject } from '@angular/core';             // ✅ Framework
 import { OsButtonComponent } from '@shared/ui-components/atoms/os-button'; // ✅ Shared UI
 
 @Component({...})
 export class CreateTransactionPage {
-  private createTransactionUseCase = inject(CreateTransactionUseCase); // ✅
+  private createTransactionCommand = inject(CreateTransactionCommand); // ✅
 }
 ```
 
@@ -140,8 +152,8 @@ export class CreateTransactionPage {
   "compilerOptions": {
     "baseUrl": "./src",
     "paths": {
-      "@models/*": ["models/*"],
-      "@application/*": ["application/*"], 
+      "@dtos/*": ["dtos/*"],
+      "@application/*": ["application/*"],
       "@infra/*": ["infra/*"],
       "@app/*": ["app/*"],
       "@shared/*": ["app/shared/*"]
@@ -162,47 +174,41 @@ export class CreateTransactionPage {
       "error",
       {
         "zones": [
-          // Models layer cannot import anything internal
+          // DTOs layer cannot import anything internal
           {
-            "target": "./src/models/**/*",
+            "target": "./src/dtos/**/*",
             "from": [
               "./src/application/**/*",
-              "./src/infra/**/*", 
-              "./src/app/**/*"
-            ],
-            "message": "Models layer cannot import from other layers"
-          },
-          
-          // Application cannot import Infra or UI
-          {
-            "target": "./src/application/**/*",
-            "from": [
               "./src/infra/**/*",
               "./src/app/**/*"
             ],
+            "message": "DTOs layer cannot import from other layers"
+          },
+
+          // Application cannot import Infra or UI
+          {
+            "target": "./src/application/**/*",
+            "from": ["./src/infra/**/*", "./src/app/**/*"],
             "message": "Application layer cannot import Infrastructure or UI"
           },
-          
+
           // Infrastructure cannot import UI components
           {
             "target": "./src/infra/**/*",
-            "from": [
-              "./src/app/features/**/*",
-              "./src/app/pages/**/*"
-            ],
+            "from": ["./src/app/features/**/*", "./src/app/pages/**/*"],
             "message": "Infrastructure cannot import specific UI components"
           }
         ]
       }
     ],
-    
+
     // Enforce path aliases between layers
     "import/no-relative-parent-imports": [
       "error",
       {
         "ignore": [
-          "./src/models/**/*",     // Models can use relative imports within
-          "./src/application/**/*" // Application can use relative imports within  
+          "./src/models/**/*", // Models can use relative imports within
+          "./src/application/**/*" // Application can use relative imports within
         ]
       }
     ]
@@ -216,54 +222,58 @@ export class CreateTransactionPage {
 // .eslint/rules/layer-boundaries.js
 module.exports = {
   meta: {
-    type: 'problem',
+    type: "problem",
     docs: {
-      description: 'Enforce clean architecture layer boundaries'
-    }
+      description: "Enforce clean architecture layer boundaries",
+    },
   },
-  
+
   create(context) {
     const filename = context.getFilename();
-    
+
     return {
       ImportDeclaration(node) {
         const importPath = node.source.value;
-        
-        // Models layer violations
-        if (filename.includes('/models/')) {
-          if (importPath.includes('@application') || 
-              importPath.includes('@infra') || 
-              importPath.includes('@app')) {
+
+        // DTOs layer violations
+        if (filename.includes("/dtos/")) {
+          if (
+            importPath.includes("@application") ||
+            importPath.includes("@infra") ||
+            importPath.includes("@app")
+          ) {
             context.report({
               node,
-              message: 'Models layer cannot import from other internal layers'
+              message: "DTOs layer cannot import from other internal layers",
             });
           }
         }
-        
+
         // Application layer violations
-        if (filename.includes('/application/')) {
-          if (importPath.includes('@infra') || importPath.includes('@app')) {
+        if (filename.includes("/application/")) {
+          if (importPath.includes("@infra") || importPath.includes("@app")) {
             context.report({
               node,
-              message: 'Application layer cannot import Infrastructure or UI'
+              message: "Application layer cannot import Infrastructure or UI",
             });
           }
         }
-        
+
         // Infrastructure violations
-        if (filename.includes('/infra/')) {
-          if (importPath.includes('@app/features') || 
-              importPath.includes('@app/pages')) {
+        if (filename.includes("/infra/")) {
+          if (
+            importPath.includes("@app/features") ||
+            importPath.includes("@app/pages")
+          ) {
             context.report({
               node,
-              message: 'Infrastructure cannot import specific UI components'
+              message: "Infrastructure cannot import specific UI components",
             });
           }
         }
-      }
+      },
     };
-  }
+  },
 };
 ```
 
@@ -273,54 +283,55 @@ module.exports = {
 
 ```typescript
 // ✅ CORRETO - Path aliases para camadas diferentes
-import { Transaction } from '@models/entities/Transaction';
-import { CreateTransactionUseCase } from '@application/use-cases/CreateTransactionUseCase';
-import { HttpTransactionAdapter } from '@infra/adapters/HttpTransactionAdapter';
+import { TransactionResponseDto } from "@dtos/transaction/response/TransactionResponseDto";
+import { CreateTransactionCommand } from "@application/commands/transaction/CreateTransactionCommand";
+import { HttpCreateTransactionAdapter } from "@infra/http/adapters/mutations/transaction/HttpCreateTransactionAdapter";
 
 // ❌ EVITAR - Imports relativos entre camadas
-import { Transaction } from '../../../models/entities/Transaction';
-import { CreateTransactionUseCase } from '../../application/use-cases/CreateTransactionUseCase';
+import { TransactionResponseDto } from "../../../dtos/transaction/response/TransactionResponseDto";
+import { CreateTransactionCommand } from "../../application/commands/transaction/CreateTransactionCommand";
 ```
 
 ### Mesma Camada (Imports Relativos Recomendados)
 
 ```typescript
 // ✅ CORRETO - Imports relativos na mesma camada
-// application/use-cases/CreateTransactionUseCase.ts
-import { CreateTransactionDto } from '../dtos/CreateTransactionDto';
-import { TransactionValidator } from './validators/TransactionValidator';
+// application/commands/transaction/CreateTransactionCommand.ts
+import { CreateTransactionRequestDto } from "@dtos/transaction/request/CreateTransactionRequestDto";
+import { ICreateTransactionPort } from "../ports/mutations/transaction/ICreateTransactionPort";
+import { CreateTransactionValidator } from "../validators/transaction/CreateTransactionValidator";
 
 // app/features/transactions/transaction-list.component.ts
-import { TransactionCardComponent } from './transaction-card.component';
-import { TransactionFilters } from './types/TransactionFilters';
+import { TransactionCardComponent } from "./transaction-card.component";
+import { TransactionFilters } from "./types/TransactionFilters";
 ```
 
 ### Imports de Third-Party Libraries
 
 ```typescript
-// ✅ Models - Apenas utilitários puros
-import { format } from 'date-fns';        // ✅ Pure utility
-import { cloneDeep } from 'lodash';       // ✅ Pure utility
+// ✅ DTOs - Apenas utilitários puros
+import { format } from "date-fns"; // ✅ Pure utility
+import { cloneDeep } from "lodash"; // ✅ Pure utility
 
-// ❌ Models - Libraries com side effects
-import { HttpClient } from '@angular/common/http'; // ❌ Side effects
-import { Injectable } from '@angular/core';        // ❌ Framework
+// ❌ DTOs - Libraries com side effects
+import { HttpClient } from "@angular/common/http"; // ❌ Side effects
+import { Injectable } from "@angular/core"; // ❌ Framework
 
 // ✅ Application - Utilitários + abstrações
-import { format } from 'date-fns';  // ✅ Pure utility
+import { format } from "date-fns"; // ✅ Pure utility
 
-// ❌ Application - Implementações concretas  
-import { HttpClient } from '@angular/common/http'; // ❌ Concrete implementation
+// ❌ Application - Implementações concretas
+import { HttpClient } from "@angular/common/http"; // ❌ Concrete implementation
 
 // ✅ Infrastructure - Qualquer biblioteca
-import { HttpClient } from '@angular/common/http'; // ✅
-import { Injectable } from '@angular/core';        // ✅
-import axios from 'axios';                         // ✅
+import { HttpClient } from "@angular/common/http"; // ✅
+import { Injectable } from "@angular/core"; // ✅
+import axios from "axios"; // ✅
 
 // ✅ UI - Angular + qualquer biblioteca
-import { Component } from '@angular/core';     // ✅
-import { FormBuilder } from '@angular/forms';  // ✅
-import { Observable } from 'rxjs';             // ✅
+import { Component } from "@angular/core"; // ✅
+import { FormBuilder } from "@angular/forms"; // ✅
+import { Observable } from "rxjs"; // ✅
 ```
 
 ## Dependency Injection (DI) Strategy
@@ -328,26 +339,30 @@ import { Observable } from 'rxjs';             // ✅
 ### Interface Segregation
 
 ```typescript
-// ✅ CORRETO - Interfaces específicas por necessidade
-export interface IBudgetServicePort {
-  getById(id: string): Promise<Either<ServiceError, Budget>>;
-  create(budget: Budget): Promise<Either<ServiceError, void>>;
+// ✅ CORRETO - Interfaces específicas por operação (Padrão Command)
+export interface ICreateBudgetPort {
+  execute(request: CreateBudgetRequestDto): Promise<Either<ServiceError, void>>;
 }
 
-export interface IBudgetQueriesPort {
-  getSummary(id: string): Promise<Either<QueryError, BudgetSummaryDto>>;
-  getList(userId: string): Promise<Either<QueryError, Budget[]>>;
+export interface IGetBudgetByIdPort {
+  execute(id: string): Promise<Either<ServiceError, BudgetResponseDto>>;
+}
+
+export interface IGetBudgetSummaryPort {
+  execute(
+    request: GetBudgetSummaryRequest
+  ): Promise<Either<ServiceError, BudgetSummaryResponseDto>>;
 }
 
 // ❌ EVITAR - Interface muito ampla
 export interface IBudgetPort {
   // Muitos métodos misturados - commands e queries
-  getById(id: string): Promise<Budget>;
-  create(budget: Budget): Promise<void>;
-  update(budget: Budget): Promise<void>;
+  create(budget: CreateBudgetRequestDto): Promise<void>;
+  update(budget: UpdateBudgetRequestDto): Promise<void>;
   delete(id: string): Promise<void>;
-  getSummary(id: string): Promise<BudgetSummary>;
-  getTransactions(id: string): Promise<Transaction[]>;
+  getById(id: string): Promise<BudgetResponseDto>;
+  getSummary(id: string): Promise<BudgetSummaryResponseDto>;
+  getList(userId: string): Promise<BudgetListResponseDto>;
   // ... mais 20 métodos
 }
 ```
@@ -355,29 +370,36 @@ export interface IBudgetPort {
 ### Provider Configuration (UI Layer)
 
 ```typescript
-// app/providers/use-cases.provider.ts
-export function provideUseCases(): Provider[] {
+// app/providers/commands-queries.provider.ts
+export function provideCommandsAndQueries(): Provider[] {
   return [
-    // Use Cases (concretos)
-    CreateTransactionUseCase,
-    UpdateBudgetUseCase,
-    
-    // Query Handlers (concretos)
-    GetBudgetSummaryQueryHandler,
-    
-    // Port -> Adapter bindings
-    { 
-      provide: IBudgetServicePort, 
-      useClass: HttpBudgetServiceAdapter 
+    // Commands (concretos)
+    CreateTransactionCommand,
+    UpdateBudgetCommand,
+    DeleteTransactionCommand,
+
+    // Queries (concretos)
+    GetBudgetSummaryQuery,
+    GetTransactionListQuery,
+    GetBudgetByIdQuery,
+
+    // Port -> Adapter bindings (1 interface por operação)
+    {
+      provide: ICreateBudgetPort,
+      useClass: HttpCreateBudgetAdapter,
     },
-    { 
-      provide: ITransactionServicePort, 
-      useClass: HttpTransactionServiceAdapter 
+    {
+      provide: IGetBudgetByIdPort,
+      useClass: HttpGetBudgetByIdAdapter,
+    },
+    {
+      provide: ICreateTransactionPort,
+      useClass: HttpCreateTransactionAdapter,
     },
     {
       provide: ILocalStorePort,
-      useClass: IndexedDBAdapter
-    }
+      useClass: IndexedDBAdapter,
+    },
   ];
 }
 ```
@@ -386,25 +408,24 @@ export function provideUseCases(): Provider[] {
 
 ```typescript
 // ✅ CORRETO - Application layer usa interfaces
-export class CreateTransactionUseCase {
+export class CreateTransactionCommand {
   constructor(
-    private transactionService: ITransactionServicePort,  // Interface
-    private accountService: IAccountServicePort          // Interface
+    private port: ICreateTransactionPort  // Interface
   ) {}
 }
 
 // ✅ CORRETO - Infrastructure implementa interfaces
 @Injectable({ providedIn: 'root' })
-export class HttpTransactionServiceAdapter implements ITransactionServicePort {
+export class HttpCreateTransactionAdapter implements ICreateTransactionPort {
   constructor(
     private httpClient: IHttpClient  // Também interface
   ) {}
 }
 
-// ✅ CORRETO - UI injeta use cases concretos
+// ✅ CORRETO - UI injeta commands/queries concretos
 @Component({...})
 export class CreateTransactionPage {
-  private createTransactionUseCase = inject(CreateTransactionUseCase); // Concreto
+  private createTransactionCommand = inject(CreateTransactionCommand); // Concreto
 }
 ```
 
@@ -414,16 +435,15 @@ export class CreateTransactionPage {
 
 ```typescript
 // ✅ Application layer tests
-describe('CreateTransactionUseCase', () => {
-  let mockTransactionService: jest.Mocked<ITransactionServicePort>;
-  
+describe("CreateTransactionCommand", () => {
+  let mockPort: jest.Mocked<ICreateTransactionPort>;
+
   beforeEach(() => {
-    mockTransactionService = {
-      create: jest.fn(),
-      // ... outros métodos mockados
-    } as jest.Mocked<ITransactionServicePort>;
+    mockPort = {
+      execute: jest.fn(),
+    } as jest.Mocked<ICreateTransactionPort>;
   });
-  
+
   // Tests não conhecem implementação concreta
 });
 ```
@@ -432,15 +452,15 @@ describe('CreateTransactionUseCase', () => {
 
 ```typescript
 // ✅ Infrastructure layer tests
-describe('HttpTransactionServiceAdapter', () => {
-  let adapter: HttpTransactionServiceAdapter;
+describe("HttpCreateTransactionAdapter", () => {
+  let adapter: HttpCreateTransactionAdapter;
   let httpClient: IHttpClient; // Pode ser mock HTTP client
-  
+
   beforeEach(() => {
     httpClient = new MockHttpClient();
-    adapter = new HttpTransactionServiceAdapter(httpClient);
+    adapter = new HttpCreateTransactionAdapter(httpClient);
   });
-  
+
   // Testa implementação concreta
 });
 ```
@@ -492,8 +512,8 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: '18'
-      
+          node-version: "18"
+
       - run: npm install
       - run: npm run validate:architecture
         name: Validate dependency boundaries
@@ -502,6 +522,8 @@ jobs:
 ---
 
 **Ver também:**
+
 - [Directory Structure](./directory-structure.md) - Organização física das camadas
 - [Layer Responsibilities](./layer-responsibilities.md) - O que cada camada deve fazer
+- [DTO-First Principles](./dto-first-principles.md) - Princípios fundamentais da arquitetura
 - [Testing Strategy](./testing-strategy.md) - Como testar respeitando boundaries
