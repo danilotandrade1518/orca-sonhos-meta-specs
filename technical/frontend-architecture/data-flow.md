@@ -2,15 +2,16 @@
 
 ## Arquitetura de Fluxo de Dados
 
-O frontend segue padrão **CQRS (Command Query Responsibility Segregation)** alinhado com o backend, separando claramente operações de escrita (Commands) e leitura (Queries). A arquitetura DTO-First garante que os dados fluam diretamente entre as camadas sem transformações complexas.
+O frontend segue padrão **CQRS (Command Query Responsibility Segregation)** alinhado com o backend, separando claramente operações de escrita (Commands) e leitura (Queries). A arquitetura **Feature-Based** mantém os princípios **DTO-First**, garantindo que os dados fluam diretamente entre as camadas sem transformações complexas, organizados por funcionalidades de negócio.
 
 ## Fluxo de Commands (Mutações)
 
 ### Arquitetura de Command
+
 ```
-[UI Component] 
+[Feature UI Component]
     ↓ (user action - DTO)
-[Command (Application)] 
+[Feature Command (Application)]
     ↓ (validação básica + orquestração)
 [Port Interface]
     ↓ (contract)
@@ -19,92 +20,108 @@ O frontend segue padrão **CQRS (Command Query Responsibility Segregation)** ali
 [Backend Command Endpoint]
 ```
 
+### Fluxo entre Features
+
+```
+[Feature A] → [Shared Service] → [Feature B]
+     ↓              ↓              ↓
+[Event Bus] → [Global State] → [Event Bus]
+```
+
 ### Implementação Prática
 
-#### 1. Command na UI
+#### 1. Command na UI (Feature-Based)
+
 ```typescript
 // app/features/transactions/pages/create-transaction.page.ts
 @Component({
-  selector: 'app-create-transaction',
+  selector: "app-create-transaction",
   template: `
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
       <os-form-field label="Descrição" [error]="getFieldError('description')">
-        <os-input 
+        <os-input
           formControlName="description"
           placeholder="Ex: Almoço no restaurante"
-          slot="input" />
+          slot="input"
+        />
       </os-form-field>
-      
+
       <os-form-field label="Valor" [error]="getFieldError('amount')">
-        <os-money-input
-          formControlName="amount"
-          slot="input" />
+        <os-money-input formControlName="amount" slot="input" />
       </os-form-field>
-      
-      <os-button 
+
+      <os-button
         type="submit"
         variant="primary"
         [loading]="submitting()"
-        [disabled]="form.invalid">
+        [disabled]="form.invalid"
+      >
         Criar Transação
       </os-button>
     </form>
-  `
+  `,
 })
 export class CreateTransactionPage {
   private createTransactionCommand = inject(CreateTransactionCommand);
   private router = inject(Router);
-  
+  private eventBus = inject(EventBusService); // Para comunicação entre features
+
   protected form = this.formBuilder.group({
-    description: ['', [Validators.required, Validators.minLength(3)]],
+    description: ["", [Validators.required, Validators.minLength(3)]],
     amount: [0, [Validators.required, Validators.min(0.01)]],
-    accountId: ['', Validators.required],
-    categoryId: ['']
+    accountId: ["", Validators.required],
+    categoryId: [""],
   });
-  
+
   protected submitting = signal(false);
   protected error = signal<string | null>(null);
 
   protected async onSubmit(): Promise<void> {
     if (this.form.invalid) return;
-    
+
     this.submitting.set(true);
     this.error.set(null);
-    
+
     const formValue = this.form.value;
     const request: CreateTransactionRequestDto = {
       description: formValue.description!,
       amountInCents: Math.round(formValue.amount! * 100),
       accountId: formValue.accountId!,
       categoryId: formValue.categoryId || undefined,
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
     };
-    
+
     const result = await this.createTransactionCommand.execute(request);
-    
+
     if (result.hasError) {
       this.error.set(result.error.message);
     } else {
-      // Success - navigate back
-      this.router.navigate(['/transactions']);
+      // Success - notificar outras features e navegar
+      this.eventBus.emit("transaction.created", {
+        transactionId: result.data?.id,
+      });
+      this.router.navigate(["/transactions"]);
     }
-    
+
     this.submitting.set(false);
   }
 }
 ```
 
 #### 2. Command (Application Layer)
+
 ```typescript
 // application/commands/transaction/CreateTransactionCommand.ts
-import { CreateTransactionRequestDto } from '@dtos/transaction/request/CreateTransactionRequestDto';
-import { ICreateTransactionPort } from '@application/ports/mutations/transaction/ICreateTransactionPort';
+import { CreateTransactionRequestDto } from "@dtos/transaction/request/CreateTransactionRequestDto";
+import { ICreateTransactionPort } from "@application/ports/mutations/transaction/ICreateTransactionPort";
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class CreateTransactionCommand {
   constructor(private port: ICreateTransactionPort) {}
 
-  async execute(request: CreateTransactionRequestDto): Promise<Either<ApplicationError, void>> {
+  async execute(
+    request: CreateTransactionRequestDto
+  ): Promise<Either<ApplicationError, void>> {
     // 1. Validação client-side básica (para UX)
     const validation = CreateTransactionValidator.validate(request);
     if (validation.hasError) {
@@ -122,23 +139,23 @@ export class CreateTransactionValidator {
     const errors: string[] = [];
 
     if (!dto.description?.trim()) {
-      errors.push('Descrição é obrigatória');
+      errors.push("Descrição é obrigatória");
     }
 
     if (!dto.amountInCents || dto.amountInCents <= 0) {
-      errors.push('Valor deve ser maior que zero');
+      errors.push("Valor deve ser maior que zero");
     }
 
     if (!dto.accountId?.trim()) {
-      errors.push('Conta é obrigatória');
+      errors.push("Conta é obrigatória");
     }
 
     if (!dto.budgetId?.trim()) {
-      errors.push('Orçamento é obrigatório');
+      errors.push("Orçamento é obrigatório");
     }
 
-    if (!dto.type || !['INCOME', 'EXPENSE'].includes(dto.type)) {
-      errors.push('Tipo deve ser INCOME ou EXPENSE');
+    if (!dto.type || !["INCOME", "EXPENSE"].includes(dto.type)) {
+      errors.push("Tipo deve ser INCOME ou EXPENSE");
     }
 
     return {
@@ -150,43 +167,49 @@ export class CreateTransactionValidator {
 ```
 
 #### 3. Port (Interface)
+
 ```typescript
 // application/ports/mutations/transaction/ICreateTransactionPort.ts
-import { CreateTransactionRequestDto } from '@dtos/transaction/request/CreateTransactionRequestDto';
+import { CreateTransactionRequestDto } from "@dtos/transaction/request/CreateTransactionRequestDto";
 
 export interface ICreateTransactionPort {
-  execute(request: CreateTransactionRequestDto): Promise<Either<ServiceError, void>>;
+  execute(
+    request: CreateTransactionRequestDto
+  ): Promise<Either<ServiceError, void>>;
 }
 ```
 
 #### 4. HTTP Adapter (Infrastructure)
+
 ```typescript
 // infra/http/adapters/mutations/transaction/HttpCreateTransactionAdapter.ts
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class HttpCreateTransactionAdapter implements ICreateTransactionPort {
   constructor(private httpClient: IHttpClient) {}
 
-  async execute(request: CreateTransactionRequestDto): Promise<Either<ServiceError, void>> {
+  async execute(
+    request: CreateTransactionRequestDto
+  ): Promise<Either<ServiceError, void>> {
     try {
       // Command-style endpoint (POST) - DTOs fluem diretamente
-      await this.httpClient.post('/transaction/create', request);
-      
+      await this.httpClient.post("/transaction/create", request);
+
       return Either.success(undefined);
     } catch (error) {
       if (error instanceof HttpError) {
         switch (error.status) {
           case 400:
-            return Either.error(new ValidationError('Dados inválidos'));
+            return Either.error(new ValidationError("Dados inválidos"));
           case 404:
             return Either.error(new AccountNotFoundError(request.accountId));
           case 409:
-            return Either.error(new ConflictError('Transação já existe'));
+            return Either.error(new ConflictError("Transação já existe"));
           default:
-            return Either.error(new ServiceError('Falha ao criar transação'));
+            return Either.error(new ServiceError("Falha ao criar transação"));
         }
       }
-      
-      return Either.error(new ServiceError('Erro de rede'));
+
+      return Either.error(new ServiceError("Erro de rede"));
     }
   }
 }
@@ -197,10 +220,11 @@ export class HttpCreateTransactionAdapter implements ICreateTransactionPort {
 ## Fluxo de Queries (Consultas)
 
 ### Arquitetura de Query
+
 ```
-[UI Component]
+[Feature UI Component]
     ↓ (data request)
-[Query (Application)]
+[Feature Query (Application)]
     ↓ (query orchestration)
 [Port Interface]
     ↓ (contract)
@@ -208,64 +232,75 @@ export class HttpCreateTransactionAdapter implements ICreateTransactionPort {
     ↓ (HTTP GET / Cache)
 [Backend Query Endpoint / Local Storage]
     ↓ (Response DTO)
-[UI Component] (exibe DTO diretamente)
+[Feature UI Component] (exibe DTO diretamente)
+```
+
+### Cache Compartilhado entre Features
+
+```
+[Feature A] → [Shared Cache Service] ← [Feature B]
+     ↓              ↓                    ↓
+[Local Cache] → [Global Cache] → [Local Cache]
 ```
 
 ### Implementação Prática
 
-#### 1. Query na UI
+#### 1. Query na UI (Feature-Based)
+
 ```typescript
 // app/features/budgets/pages/budget-summary.page.ts
 @Component({
-  selector: 'app-budget-summary',
+  selector: "app-budget-summary",
   template: `
     @if (loading()) {
-      <os-skeleton-card />
+    <os-skeleton-card />
     } @else if (summary(); as data) {
-      <os-card>
-        <os-card-header>
-          <h2>{{ data.budgetName }}</h2>
-          <os-badge [variant]="usageVariant()">
-            {{ data.usagePercentage }}% utilizado
-          </os-badge>
-        </os-card-header>
-        
-        <os-card-content>
-          <div class="summary-metrics">
-            <div class="metric">
-              <span class="label">Limite</span>
-              <os-money [amountInCents]="data.limitInCents" />
-            </div>
-            
-            <div class="metric">
-              <span class="label">Gasto</span>
-              <os-money [amountInCents]="data.currentUsageInCents" />
-            </div>
-            
-            <div class="metric">
-              <span class="label">Disponível</span>
-              <os-money [amountInCents]="data.remainingInCents" />
-            </div>
+    <os-card>
+      <os-card-header>
+        <h2>{{ data.budgetName }}</h2>
+        <os-badge [variant]="usageVariant()">
+          {{ data.usagePercentage }}% utilizado
+        </os-badge>
+      </os-card-header>
+
+      <os-card-content>
+        <div class="summary-metrics">
+          <div class="metric">
+            <span class="label">Limite</span>
+            <os-money [amountInCents]="data.limitInCents" />
           </div>
-        </os-card-content>
-      </os-card>
+
+          <div class="metric">
+            <span class="label">Gasto</span>
+            <os-money [amountInCents]="data.currentUsageInCents" />
+          </div>
+
+          <div class="metric">
+            <span class="label">Disponível</span>
+            <os-money [amountInCents]="data.remainingInCents" />
+          </div>
+        </div>
+      </os-card-content>
+    </os-card>
     } @else if (error()) {
-      <os-error-state [message]="error()" (onRetry)="loadSummary()" />
+    <os-error-state [message]="error()" (onRetry)="loadSummary()" />
     }
-  `
+  `,
 })
 export class BudgetSummaryPage {
   private getBudgetSummaryQuery = inject(GetBudgetSummaryQuery);
   private route = inject(ActivatedRoute);
-  
+  private eventBus = inject(EventBusService); // Para escutar mudanças de outras features
+  private sharedCache = inject(SharedCacheService); // Cache compartilhado
+
   protected summary = signal<BudgetSummaryResponseDto | null>(null);
   protected loading = signal(false);
   protected error = signal<string | null>(null);
-  
+
   // Computed properties
   protected usageVariant = computed(() => {
     const usage = this.summary()?.usagePercentage || 0;
-    return usage > 90 ? 'danger' : usage > 70 ? 'warning' : 'success';
+    return usage > 90 ? "danger" : usage > 70 ? "warning" : "success";
   });
 
   async ngOnInit(): Promise<void> {
@@ -275,66 +310,74 @@ export class BudgetSummaryPage {
   protected async loadSummary(): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
-    
-    const budgetId = this.route.snapshot.params['id'];
+
+    const budgetId = this.route.snapshot.params["id"];
     const request: GetBudgetSummaryRequest = {
       budgetId,
-      period: 'current_month'
+      period: "current_month",
     };
-    
+
     const result = await this.getBudgetSummaryQuery.execute(request);
-    
+
     if (result.hasError) {
       this.error.set(result.error.message);
     } else {
       this.summary.set(result.data!);
     }
-    
+
     this.loading.set(false);
   }
 }
 ```
 
 #### 2. Query (Application Layer)
+
 ```typescript
 // application/queries/budget/GetBudgetSummaryQuery.ts
-import { BudgetSummaryResponseDto } from '@dtos/budget/response/BudgetSummaryResponseDto';
-import { IGetBudgetSummaryPort } from '@application/ports/queries/budget/IGetBudgetSummaryPort';
+import { BudgetSummaryResponseDto } from "@dtos/budget/response/BudgetSummaryResponseDto";
+import { IGetBudgetSummaryPort } from "@application/ports/queries/budget/IGetBudgetSummaryPort";
 
 export interface GetBudgetSummaryRequest {
   readonly budgetId: string;
-  readonly period: 'current_month' | 'last_month' | 'current_year';
+  readonly period: "current_month" | "last_month" | "current_year";
 }
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class GetBudgetSummaryQuery {
   constructor(private port: IGetBudgetSummaryPort) {}
 
-  async execute(request: GetBudgetSummaryRequest): Promise<Either<QueryError, BudgetSummaryResponseDto>> {
+  async execute(
+    request: GetBudgetSummaryRequest
+  ): Promise<Either<QueryError, BudgetSummaryResponseDto>> {
     try {
       // Chamar port (que implementa a operação)
       return this.port.execute(request);
     } catch (error) {
-      return Either.error(new QueryError('Falha ao buscar resumo do orçamento'));
+      return Either.error(
+        new QueryError("Falha ao buscar resumo do orçamento")
+      );
     }
   }
 }
 ```
 
 #### 3. HTTP Adapter para Query
+
 ```typescript
 // infra/http/adapters/queries/budget/HttpGetBudgetSummaryAdapter.ts
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class HttpGetBudgetSummaryAdapter implements IGetBudgetSummaryPort {
   constructor(private httpClient: IHttpClient) {}
 
-  async execute(request: GetBudgetSummaryRequest): Promise<Either<ServiceError, BudgetSummaryResponseDto>> {
+  async execute(
+    request: GetBudgetSummaryRequest
+  ): Promise<Either<ServiceError, BudgetSummaryResponseDto>> {
     try {
       // Query-style endpoint (GET with params) - DTOs fluem diretamente
       const response = await this.httpClient.get<BudgetSummaryResponseDto>(
         `/budget/${request.budgetId}/summary?period=${request.period}`
       );
-      
+
       return Either.success(response);
     } catch (error) {
       if (error instanceof HttpError) {
@@ -342,13 +385,15 @@ export class HttpGetBudgetSummaryAdapter implements IGetBudgetSummaryPort {
           case 404:
             return Either.error(new BudgetNotFoundError(request.budgetId));
           case 403:
-            return Either.error(new UnauthorizedError('acessar orçamento'));
+            return Either.error(new UnauthorizedError("acessar orçamento"));
           default:
-            return Either.error(new ServiceError('Falha ao buscar resumo do orçamento'));
+            return Either.error(
+              new ServiceError("Falha ao buscar resumo do orçamento")
+            );
         }
       }
-      
-      return Either.error(new ServiceError('Erro de rede'));
+
+      return Either.error(new ServiceError("Erro de rede"));
     }
   }
 }
@@ -368,7 +413,7 @@ export class TransactionListPage {
   private transactions = signal<TransactionResponseDto[]>([]);
   private loading = signal(false);
   private error = signal<string | null>(null);
-  
+
   // Filtros
   private filters = signal<TransactionFilters>({
     category: null,
@@ -376,32 +421,32 @@ export class TransactionListPage {
     minAmount: null,
     maxAmount: null
   });
-  
+
   // Estado computado
   protected filteredTransactions = computed(() => {
     const transactions = this.transactions();
     const filters = this.filters();
-    
+
     return transactions.filter(transaction => {
       if (filters.category && transaction.categoryId !== filters.category) {
         return false;
       }
-      
+
       if (filters.minAmount && transaction.amountInCents < filters.minAmount * 100) {
         return false;
       }
-      
+
       // ... outros filtros
       return true;
     });
   });
-  
+
   protected totalAmount = computed(() => {
     return this.filteredTransactions()
       .reduce((sum, t) => sum + t.amountInCents, 0);
   });
-  
-  protected isEmpty = computed(() => 
+
+  protected isEmpty = computed(() =>
     !this.loading() && this.transactions().length === 0
   );
 }
@@ -411,28 +456,31 @@ export class TransactionListPage {
 
 ```typescript
 // Cache leve para dados de uso imediato usando DTOs
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class BudgetCacheService {
-  private budgetCache = new Map<string, { data: BudgetResponseDto; expiresAt: number }>();
+  private budgetCache = new Map<
+    string,
+    { data: BudgetResponseDto; expiresAt: number }
+  >();
   private readonly TTL = 5 * 60 * 1000; // 5 minutos
 
   getCachedBudget(id: string): BudgetResponseDto | null {
     const cached = this.budgetCache.get(id);
-    
+
     if (!cached) return null;
-    
+
     if (Date.now() > cached.expiresAt) {
       this.budgetCache.delete(id);
       return null;
     }
-    
+
     return cached.data;
   }
 
   setCachedBudget(budget: BudgetResponseDto): void {
     this.budgetCache.set(budget.id, {
       data: budget,
-      expiresAt: Date.now() + this.TTL
+      expiresAt: Date.now() + this.TTL,
     });
   }
 
@@ -450,27 +498,27 @@ export class BudgetCacheService {
 
 ```typescript
 // Apenas para dados verdadeiramente compartilhados usando DTOs
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class GlobalStateService {
   // Usuário autenticado
   private _currentUser = signal<AuthUserResponseDto | null>(null);
   readonly currentUser = this._currentUser.asReadonly();
-  
+
   // Configurações globais
   private _appConfig = signal<AppConfigResponseDto | null>(null);
   readonly appConfig = this._appConfig.asReadonly();
-  
+
   // Budget ativo (contexto atual)
   private _activeBudget = signal<BudgetResponseDto | null>(null);
   readonly activeBudget = this._activeBudget.asReadonly();
-  
+
   setCurrentUser(user: AuthUserResponseDto | null): void {
     this._currentUser.set(user);
   }
-  
+
   setActiveBudget(budget: BudgetResponseDto | null): void {
     this._activeBudget.set(budget);
-    
+
     // Invalidar caches relacionados quando contexto muda
     this.invalidateRelatedCaches(budget?.id);
   }
@@ -482,71 +530,69 @@ export class GlobalStateService {
 ## Error Handling nos Fluxos
 
 ### Error Boundary para Commands
+
 ```typescript
 // application/errors/CommandErrorHandler.ts
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class CommandErrorHandler {
   handleCommandError(error: ApplicationError): UserFacingError {
     if (error instanceof ValidationError) {
-      return new UserFacingError(
-        'Dados inválidos',
-        error.message,
-        'warning'
-      );
+      return new UserFacingError("Dados inválidos", error.message, "warning");
     }
-    
+
     if (error instanceof UnauthorizedError) {
       return new UserFacingError(
-        'Acesso negado',
-        'Você não tem permissão para esta operação',
-        'error'
+        "Acesso negado",
+        "Você não tem permissão para esta operação",
+        "error"
       );
     }
-    
+
     if (error instanceof ConflictError) {
       return new UserFacingError(
-        'Conflito de dados',
-        'Os dados foram modificados por outro usuário',
-        'warning'
+        "Conflito de dados",
+        "Os dados foram modificados por outro usuário",
+        "warning"
       );
     }
-    
+
     // Error genérico
     return new UserFacingError(
-      'Erro inesperado',
-      'Ocorreu um erro. Tente novamente em alguns instantes',
-      'error'
+      "Erro inesperado",
+      "Ocorreu um erro. Tente novamente em alguns instantes",
+      "error"
     );
   }
 }
 ```
 
 ### Error Boundary para Queries
+
 ```typescript
 // application/errors/QueryErrorHandler.ts
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class QueryErrorHandler {
   handleQueryError(error: QueryError): UserFacingError {
     if (error instanceof NotFoundError) {
       return new UserFacingError(
-        'Não encontrado',
-        'Os dados solicitados não foram encontrados',
-        'info'
+        "Não encontrado",
+        "Os dados solicitados não foram encontrados",
+        "info"
       );
     }
-    
+
     if (error instanceof NetworkError) {
       return new UserFacingError(
-        'Sem conexão',
-        'Verificando dados locais...',
-        'warning'
+        "Sem conexão",
+        "Verificando dados locais...",
+        "warning"
       );
     }
-    
+
     return new UserFacingError(
-      'Erro ao carregar',
-      'Não foi possível carregar os dados',
-      'error'
+      "Erro ao carregar",
+      "Não foi possível carregar os dados",
+      "error"
     );
   }
 }
@@ -557,6 +603,7 @@ export class QueryErrorHandler {
 ## Padrões de Loading e Estados
 
 ### Loading States
+
 ```typescript
 // Padrão para estados de loading granulares usando DTOs
 @Component({...})
@@ -567,26 +614,26 @@ export class BudgetDashboard {
     transactions: signal(false),
     charts: signal(false)
   };
-  
+
   // Estado com DTOs
   protected summary = signal<BudgetSummaryResponseDto | null>(null);
   protected transactions = signal<TransactionResponseDto[]>([]);
   protected charts = signal<ChartDataResponseDto | null>(null);
-  
+
   // Computed loading state geral
-  protected isLoading = computed(() => 
+  protected isLoading = computed(() =>
     Object.values(this.loadingStates).some(loading => loading())
   );
-  
+
   async loadData(): Promise<void> {
     // Carregar dados em paralelo com loading states independentes
     await Promise.all([
       this.loadSummary(),
-      this.loadTransactions(),  
+      this.loadTransactions(),
       this.loadCharts()
     ]);
   }
-  
+
   private async loadSummary(): Promise<void> {
     this.loadingStates.summary.set(true);
     // ... load summary usando DTOs
@@ -597,8 +644,96 @@ export class BudgetDashboard {
 
 ---
 
+## Comunicação entre Features
+
+### Event Bus para Comunicação Loose-Coupled
+
+```typescript
+// shared/services/event-bus.service.ts
+@Injectable({ providedIn: "root" })
+export class EventBusService {
+  private eventSubject = new Subject<FeatureEvent>();
+
+  emit(event: string, data?: any): void {
+    this.eventSubject.next({ type: event, data, timestamp: Date.now() });
+  }
+
+  on(eventType: string): Observable<FeatureEvent> {
+    return this.eventSubject.pipe(filter((event) => event.type === eventType));
+  }
+}
+
+// Exemplo de uso entre features
+// Feature Transactions emite evento
+this.eventBus.emit("transaction.created", { transactionId, budgetId });
+
+// Feature Budgets escuta evento
+this.eventBus.on("transaction.created").subscribe((event) => {
+  this.invalidateBudgetCache(event.data.budgetId);
+});
+```
+
+### Shared State para Dados Globais
+
+```typescript
+// shared/services/shared-state.service.ts
+@Injectable({ providedIn: "root" })
+export class SharedStateService {
+  private _activeBudget = signal<BudgetResponseDto | null>(null);
+  readonly activeBudget = this._activeBudget.asReadonly();
+
+  private _userProfile = signal<UserProfileResponseDto | null>(null);
+  readonly userProfile = this._userProfile.asReadonly();
+
+  setActiveBudget(budget: BudgetResponseDto | null): void {
+    this._activeBudget.set(budget);
+    // Notificar todas as features sobre mudança
+    this.eventBus.emit("budget.changed", budget);
+  }
+}
+```
+
+### Cache Compartilhado entre Features
+
+```typescript
+// shared/services/shared-cache.service.ts
+@Injectable({ providedIn: "root" })
+export class SharedCacheService {
+  private cache = new Map<string, CacheEntry>();
+
+  get<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry || Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.data;
+  }
+
+  set<T>(key: string, data: T, ttl: number = 300000): void {
+    this.cache.set(key, {
+      data,
+      expiresAt: Date.now() + ttl,
+    });
+  }
+
+  invalidate(pattern: string): void {
+    for (const key of this.cache.keys()) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+```
+
+---
+
 **Ver também:**
+
 - [Layer Responsibilities](./layer-responsibilities.md) - Detalhes das responsabilidades de cada camada
+- [Feature Organization](./feature-organization.md) - Organização e estrutura das features
 - [Backend Integration](./backend-integration.md) - Como integrar com APIs usando DTOs
 - [DTO-First Principles](./dto-first-principles.md) - Princípios fundamentais da arquitetura
+- [State Management](./state-management.md) - Gerenciamento de estado com Angular Signals
 - [Offline Strategy](./offline-strategy.md) - Fluxos quando offline
