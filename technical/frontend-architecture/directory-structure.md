@@ -1,195 +1,132 @@
 # Organização de Diretórios
 
-## Estrutura Proposta (DTO-First Architecture)
+## Estrutura Proposta (Feature-Based Architecture com DTO-First)
 
-A estrutura segue DTO-First Architecture, eliminando a camada de Models e priorizando DTOs como base de toda comunicação:
+A estrutura segue **Feature-Based Architecture** com princípios **DTO-First**, organizando o código por funcionalidades de negócio para melhor escalabilidade e manutenibilidade:
 
 ```
 /src
-  /dtos                   # 🔵 Contratos de API (TypeScript interfaces)
-    /budget               # Budget-related DTOs
-      /request            # CreateBudgetRequestDto, UpdateBudgetRequestDto
-      /response           # BudgetResponseDto, BudgetListResponseDto
-    /transaction          # Transaction-related DTOs
-      /request            # CreateTransactionRequestDto, UpdateTransactionRequestDto
-      /response           # TransactionResponseDto, TransactionListResponseDto
-    /account              # Account-related DTOs
-      /request            # CreateAccountRequestDto, UpdateAccountRequestDto
-      /response           # AccountResponseDto, AccountListResponseDto
-    /credit-card          # Credit Card-related DTOs
-      /request            # CreateCreditCardRequestDto, UpdateCreditCardRequestDto
-      /response           # CreditCardResponseDto, CreditCardListResponseDto
-    /goal                 # Goal-related DTOs
-      /request            # CreateGoalRequestDto, UpdateGoalRequestDto
-      /response           # GoalResponseDto, GoalListResponseDto
-    /shared               # Types compartilhados
-      /Money.ts           # type Money = number (centavos)
-      /DateString.ts      # type DateString = string (ISO)
-      /TransactionType.ts # type TransactionType = 'INCOME' | 'EXPENSE'
-      /BaseEntity.ts      # interface BaseEntityDto
+  /app                    # 🟢 Angular Application
+    /core                 # Serviços singleton e configurações globais
+      /services           # Serviços globais (Auth, Config, etc.)
+      /interceptors       # HTTP interceptors globais
+      /guards             # Route guards globais
+      /core.module.ts     # Core module (se necessário)
 
-  /application            # 🟡 Use cases simplificados
-    /commands             # Commands organizados por contexto (padrão Command)
-      /budget             # CreateBudgetCommand, UpdateBudgetCommand, DeleteBudgetCommand
-      /transaction        # CreateTransactionCommand, UpdateTransactionCommand, DeleteTransactionCommand
-      /account            # CreateAccountCommand, UpdateAccountCommand, DeleteAccountCommand
-      /credit-card        # CreateCreditCardCommand, UpdateCreditCardCommand, DeleteCreditCardCommand
-      /goal               # CreateGoalCommand, UpdateGoalCommand, DeleteGoalCommand
-    /queries              # Query handlers organizados por contexto (padrão Command)
-      /budget             # GetBudgetByIdQuery, GetBudgetListQuery, GetBudgetSummaryQuery
-      /transaction        # GetTransactionByIdQuery, GetTransactionListQuery, GetTransactionByPeriodQuery
-      /account            # GetAccountByIdQuery, GetAccountListQuery, GetAccountBalanceQuery
-      /credit-card        # GetCreditCardByIdQuery, GetCreditCardListQuery, GetCreditCardBillsQuery
-      /goal               # GetGoalByIdQuery, GetGoalListQuery, GetGoalProgressQuery
-    /validators           # Validações client-side básicas
-      /budget             # CreateBudgetValidator, UpdateBudgetValidator
-      /transaction        # CreateTransactionValidator, UpdateTransactionValidator
-      /account            # CreateAccountValidator, UpdateAccountValidator
-      /credit-card        # CreateCreditCardValidator, UpdateCreditCardValidator
-      /goal               # CreateGoalValidator, UpdateGoalValidator
-    /transformers         # Transformações leves de dados
-      /budget             # BudgetTransformer
-      /transaction        # TransactionTransformer
-      /account            # AccountTransformer
-      /credit-card        # CreditCardTransformer
-      /goal               # GoalTransformer
-    /ports                # Interfaces para infra (1 interface por operação)
-      /mutations          # Ports para operações de escrita
-        /budget
-          /ICreateBudgetPort.ts
-          /IUpdateBudgetPort.ts
-          /IDeleteBudgetPort.ts
-        /transaction
-          /ICreateTransactionPort.ts
-          /IUpdateTransactionPort.ts
-          /IDeleteTransactionPort.ts
-        /account
-          /ICreateAccountPort.ts
-          /IUpdateAccountPort.ts
-          /IDeleteAccountPort.ts
-        /credit-card
-          /ICreateCreditCardPort.ts
-          /IUpdateCreditCardPort.ts
-          /IDeleteCreditCardPort.ts
-        /goal
-          /ICreateGoalPort.ts
-          /IUpdateGoalPort.ts
-          /IDeleteGoalPort.ts
-      /queries            # Ports para operações de leitura
-        /budget
-          /IGetBudgetByIdPort.ts
-          /IGetBudgetListPort.ts
-          /IGetBudgetSummaryPort.ts
-        /transaction
-          /IGetTransactionByIdPort.ts
-          /IGetTransactionListPort.ts
-          /IGetTransactionByPeriodPort.ts
-        /account
-          /IGetAccountByIdPort.ts
-          /IGetAccountListPort.ts
-          /IGetAccountBalancePort.ts
-        /credit-card
-          /IGetCreditCardByIdPort.ts
-          /IGetCreditCardListPort.ts
-          /IGetCreditCardBillsPort.ts
-        /goal
-          /IGetGoalByIdPort.ts
-          /IGetGoalListPort.ts
-          /IGetGoalProgressPort.ts
-
-  /infra                  # 🟠 Adapters HTTP e Storage
-    /http                 # HTTP clients e interceptors
-      /adapters           # HTTP adapters organizados por operação (1 adapter por port)
-        /mutations        # Adapters para operações de escrita
-          /budget
-            /HttpCreateBudgetAdapter.ts
-            /HttpUpdateBudgetAdapter.ts
-            /HttpDeleteBudgetAdapter.ts
-          /transaction
-            /HttpCreateTransactionAdapter.ts
-            /HttpUpdateTransactionAdapter.ts
-            /HttpDeleteTransactionAdapter.ts
-          /account
-            /HttpCreateAccountAdapter.ts
-            /HttpUpdateAccountAdapter.ts
-            /HttpDeleteAccountAdapter.ts
-          /credit-card
-            /HttpCreateCreditCardAdapter.ts
-            /HttpUpdateCreditCardAdapter.ts
-            /HttpDeleteCreditCardAdapter.ts
-          /goal
-            /HttpCreateGoalAdapter.ts
-            /HttpUpdateGoalAdapter.ts
-            /HttpDeleteGoalAdapter.ts
-        /queries          # Adapters para operações de leitura
-          /budget
-            /HttpGetBudgetByIdAdapter.ts
-            /HttpGetBudgetListAdapter.ts
-            /HttpGetBudgetSummaryAdapter.ts
-          /transaction
-            /HttpGetTransactionByIdAdapter.ts
-            /HttpGetTransactionListAdapter.ts
-            /HttpGetTransactionByPeriodAdapter.ts
-          /account
-            /HttpGetAccountByIdAdapter.ts
-            /HttpGetAccountListAdapter.ts
-            /HttpGetAccountBalanceAdapter.ts
-          /credit-card
-            /HttpGetCreditCardByIdAdapter.ts
-            /HttpGetCreditCardListAdapter.ts
-            /HttpGetCreditCardBillsAdapter.ts
-          /goal
-            /HttpGetGoalByIdAdapter.ts
-            /HttpGetGoalListAdapter.ts
-            /HttpGetGoalProgressAdapter.ts
-      /interceptors       # AuthInterceptor, ErrorInterceptor
-    /storage              # LocalStorage/IndexedDB adapters
-      /LocalStoreAdapter.ts
-    /auth                 # Firebase Auth adapter
-      /FirebaseAuthAdapter.ts
-    /mappers              # Conversões apenas quando necessário
-      /DateMapper.ts      # Apenas quando formato difere
-
-  /app                    # 🟢 Angular UI Layer
-    /features             # Páginas/fluxos por contexto (lazy-loaded)
-      /budgets            # Budget management feature
-      /transactions       # Transaction management
-      /accounts           # Account management
-      /credit-cards       # Credit card management
-      /goals              # Goals and savings
-      /dashboard          # Main dashboard
     /shared               # Componentes e utilitários compartilhados
-      /ui-components      # Abstração sobre Angular Material
+      /ui-components      # Design System (abstração Angular Material)
         /atoms            # os-button, os-input, os-icon
         /molecules        # os-form-field, os-card, os-search-box
         /organisms        # os-data-table, os-navigation, os-modal
+        /ui-components.module.ts
       /theme              # Customizações de tema Material
         /_tokens.scss     # Design tokens
         /_material-theme.scss # Angular Material theme
         /_globals.scss    # Global styles
         /theme.scss       # Entry point
-      /guards             # Route guards
-      /pipes              # Custom pipes
-      /directives         # Custom directives
-      /layouts            # Layout components
+      /pipes              # Custom pipes compartilhados
+      /directives         # Custom directives compartilhadas
+      /utils              # Utilitários compartilhados
+      /shared.module.ts   # Shared module
 
-  /mocks                  # 🔴 MSW mocks
-    /context              # Handlers por contexto de negócio
+    /features             # Módulos de funcionalidades (lazy-loaded)
+      /dashboard          # Dashboard principal
+        /components       # Componentes específicos do dashboard
+        /services         # Serviços específicos do dashboard
+        /dashboard.module.ts
+        /dashboard-routing.module.ts
+      /budgets            # Gestão de orçamentos
+        /components       # Componentes de orçamento
+        /services         # Serviços de orçamento
+        /budgets.module.ts
+        /budgets-routing.module.ts
+      /transactions       # Gestão de transações
+        /components       # Componentes de transação
+        /services         # Serviços de transação
+        /transactions.module.ts
+        /transactions-routing.module.ts
+      /goals              # Gestão de metas
+        /components       # Componentes de metas
+        /services         # Serviços de metas
+        /goals.module.ts
+        /goals-routing.module.ts
+      /accounts           # Gestão de contas
+        /components       # Componentes de contas
+        /services         # Serviços de contas
+        /accounts.module.ts
+        /accounts-routing.module.ts
+      /credit-cards       # Gestão de cartões de crédito
+        /components       # Componentes de cartões
+        /services         # Serviços de cartões
+        /credit-cards.module.ts
+        /credit-cards-routing.module.ts
+      /reports            # Relatórios e análises
+        /components       # Componentes de relatórios
+        /services         # Serviços de relatórios
+        /reports.module.ts
+        /reports-routing.module.ts
+      /onboarding         # Fluxo de onboarding
+        /components       # Componentes de onboarding
+        /services         # Serviços de onboarding
+        /onboarding.module.ts
+        /onboarding-routing.module.ts
+
+    /layouts              # Layouts da aplicação
+      /main-layout        # Layout principal da aplicação
+      /auth-layout        # Layout para páginas de autenticação
+      /layouts.module.ts  # Layouts module
+
+    /dtos                 # Contratos de API (DTO-First)
+      /budget             # DTOs de orçamento
+        /request          # CreateBudgetRequestDto, UpdateBudgetRequestDto
+        /response         # BudgetResponseDto, BudgetListResponseDto
+      /transaction        # DTOs de transação
+        /request          # CreateTransactionRequestDto, UpdateTransactionRequestDto
+        /response         # TransactionResponseDto, TransactionListResponseDto
+      /goal               # DTOs de metas
+        /request          # CreateGoalRequestDto, UpdateGoalRequestDto
+        /response         # GoalResponseDto, GoalListResponseDto
+      /account            # DTOs de contas
+        /request          # CreateAccountRequestDto, UpdateAccountRequestDto
+        /response         # AccountResponseDto, AccountListResponseDto
+      /credit-card        # DTOs de cartões de crédito
+        /request          # CreateCreditCardRequestDto, UpdateCreditCardRequestDto
+        /response         # CreditCardResponseDto, CreditCardListResponseDto
+      /shared             # Types compartilhados
+        /Money.ts         # type Money = number (centavos)
+        /DateString.ts    # type DateString = string (ISO)
+        /TransactionType.ts # type TransactionType = 'INCOME' | 'EXPENSE'
+        /BaseEntity.ts    # interface BaseEntityDto
+
+    /services             # Serviços de aplicação
+      /api                # Serviços de API
+      /state              # Gerenciamento de estado global
+      /validation         # Validações globais
+
+    /app-routing.module.ts
+    /app.component.ts
+    /app.module.ts
+
+  /assets                 # Assets estáticos
+  /environments           # Configurações de ambiente
+
+  /mocks                  # 🔴 MSW mocks (desenvolvimento)
+    /features             # Handlers por feature
       /budget             # Budget-related mocks
         /budgetHandlers.ts
         /budgetMocks.ts
       /transaction        # Transaction-related mocks
         /transactionHandlers.ts
         /transactionMocks.ts
+      /goal               # Goal-related mocks
+        /goalHandlers.ts
+        /goalMocks.ts
       /account            # Account-related mocks
         /accountHandlers.ts
         /accountMocks.ts
       /credit-card        # Credit Card-related mocks
         /creditCardHandlers.ts
         /creditCardMocks.ts
-      /goal               # Goal-related mocks
-        /goalHandlers.ts
-        /goalMocks.ts
     /handlers.ts          # Aggregated handlers
     /browser.ts           # Browser worker setup
 
@@ -206,56 +143,83 @@ A estrutura segue DTO-First Architecture, eliminando a camada de Models e priori
 /tsconfig.json            # Path aliases para camadas
 ```
 
-## Detalhamento por Camada
+## Detalhamento por Estrutura
 
-### `/dtos` - Contratos de API (TypeScript Puro)
+### `/app/core` - Serviços Globais
+
+- **Singleton Services**: Serviços que existem uma única vez na aplicação
+- **Global Configuration**: Configurações que afetam toda a aplicação
+- **HTTP Interceptors**: Interceptadores globais para autenticação, logging, etc.
+- **Route Guards**: Guards globais para autenticação e autorização
+- **Características**: Inicializados uma única vez, compartilhados entre features
+
+### `/app/shared` - Componentes e Utilitários Compartilhados
+
+- **UI Components**: Design System com abstração sobre Angular Material
+  - **Atoms**: Componentes básicos (`os-button`, `os-input`, `os-icon`)
+  - **Molecules**: Composições (`os-form-field`, `os-card`, `os-search-box`)
+  - **Organisms**: Componentes complexos (`os-data-table`, `os-navigation`, `os-modal`)
+- **Theme**: Customizações de tema Material Design
+- **Pipes**: Pipes compartilhados entre features
+- **Directives**: Directives compartilhadas entre features
+- **Utils**: Utilitários e helpers compartilhados
+- **Características**: Reutilizáveis, sem dependências de features específicas
+
+### `/app/features` - Módulos de Funcionalidades
+
+Cada feature é um módulo independente com:
+
+- **Components**: Componentes específicos da feature
+- **Services**: Serviços específicos da feature
+- **Module**: Módulo Angular da feature
+- **Routing**: Roteamento específico da feature
+- **Lazy Loading**: Carregamento sob demanda
+- **Isolamento**: Dependências mínimas entre features
+
+#### Estrutura Interna de uma Feature
+
+```
+/features/budgets
+├── /components           # Componentes da feature
+│   ├── budget-list.component.ts
+│   ├── budget-form.component.ts
+│   └── budget-card.component.ts
+├── /services            # Serviços da feature
+│   ├── budget.service.ts
+│   └── budget-state.service.ts
+├── /dtos               # DTOs específicos da feature (se necessário)
+│   ├── request/
+│   └── response/
+├── budgets.module.ts   # Módulo da feature
+└── budgets-routing.module.ts # Roteamento da feature
+```
+
+### `/app/layouts` - Layouts da Aplicação
+
+- **Main Layout**: Layout principal com navegação, header, sidebar
+- **Auth Layout**: Layout para páginas de autenticação
+- **Responsive**: Adaptação para diferentes tamanhos de tela
+- **Características**: Estrutura visual compartilhada entre features
+
+### `/app/dtos` - Contratos de API (DTO-First)
 
 - **Nenhuma dependência** de Angular ou bibliotecas externas
-- **Organização por contexto**: Cada entidade tem sua própria pasta (budget, transaction, account, etc.)
-- **Request DTOs**: Estruturas para dados enviados ao backend, organizadas por contexto
-- **Response DTOs**: Estruturas para dados recebidos do backend, organizadas por contexto
-- **Shared Types**: Tipos compartilhados (Money, DateString, Enums) na pasta `/shared`
+- **Organização por contexto**: Cada entidade tem sua própria pasta
+- **Request DTOs**: Estruturas para dados enviados ao backend
+- **Response DTOs**: Estruturas para dados recebidos do backend
+- **Shared Types**: Tipos compartilhados (Money, DateString, Enums)
 - **Características**: 100% alinhado com API, sem lógica de negócio
 
-### `/application` - Use Cases Simplificados (TypeScript Puro)
+### `/app/services` - Serviços de Aplicação
 
-- **Orquestração** de chamadas HTTP e validações básicas
-- **Organização por contexto**: Cada entidade tem sua própria pasta (budget, transaction, account, etc.)
-- **Commands**: Operações de escrita seguindo padrão Command (`CreateBudgetCommand`, `UpdateTransactionCommand`)
-- **Queries**: Operações de leitura seguindo padrão Command (`GetBudgetByIdQuery`, `GetTransactionListQuery`)
-- **Validators**: Validações client-side para UX, organizadas por contexto
-- **Transformers**: Transformações leves quando necessário, organizadas por contexto
-- **Ports**: 1 interface por operação, separadas em mutations e queries (`ICreateBudgetPort`, `IGetBudgetByIdPort`)
-- **Não conhece**: Angular, HTTP, storage específico
-
-### `/infra` - Infrastructure Layer
-
-- **Adapters concretos** para Ports definidos em Application
-- **1 Adapter por Port**: Cada interface tem sua implementação específica
-- **Organização por operação**: Adapters separados em mutations e queries
-- **HTTP Clients**: `HttpCreateBudgetAdapter`, `HttpGetBudgetByIdAdapter`, `HttpCreateTransactionAdapter`
-- **Storage**: `LocalStoreAdapter` (IndexedDB), `CacheAdapter`
-- **Auth**: `FirebaseAuthAdapter`
-- **Mappers**: Conversão apenas quando formato difere (na maioria dos casos, DTOs fluem diretamente)
-
-### `/app` - UI Layer (Angular)
-
-- **Componentes** Angular específicos por feature
-- **Roteamento** e navegação
-- **Lazy Loading** por contexto de negócio
-- **Dependency Injection** conectando Application layer via Ports
-- **Estado local** com Angular Signals usando DTOs diretamente
-
-### `/shared/ui-components` - Design System
-
-- **Atoms**: Componentes básicos (`os-button`, `os-input`)
-- **Molecules**: Composições (`os-form-field`, `os-card`)
-- **Organisms**: Componentes complexos (`os-data-table`, `os-modal`)
-- **Abstração**: Encapsula Angular Material mantendo API própria
+- **API Services**: Serviços de comunicação com backend
+- **State Services**: Gerenciamento de estado global (quando necessário)
+- **Validation Services**: Validações globais
+- **Características**: Serviços compartilhados entre features
 
 ### `/mocks` - Development Support
 
-- **Context Handlers**: Mocks organizados por contexto/entidade (budget, transaction, account, etc.)
+- **Feature Handlers**: Mocks organizados por feature
 - **Realistic Data**: Alinhado com DTOs e contratos reais
 - **Development**: Enabled via `MSW_ENABLED` flag
 - **Testing**: Auto-initialized em test setup
@@ -357,11 +321,13 @@ export class HttpGetBudgetByIdAdapter implements IGetBudgetByIdPort {
   "compilerOptions": {
     "baseUrl": "./src",
     "paths": {
-      "@dtos/*": ["dtos/*"],
-      "@application/*": ["application/*"],
-      "@infra/*": ["infra/*"],
       "@app/*": ["app/*"],
+      "@core/*": ["app/core/*"],
       "@shared/*": ["app/shared/*"],
+      "@features/*": ["app/features/*"],
+      "@layouts/*": ["app/layouts/*"],
+      "@dtos/*": ["app/dtos/*"],
+      "@services/*": ["app/services/*"],
       "@mocks/*": ["mocks/*"]
     }
   }
@@ -370,48 +336,70 @@ export class HttpGetBudgetByIdAdapter implements IGetBudgetByIdPort {
 
 ## Regras de Importação
 
-### Entre Camadas Diferentes (Path Aliases)
+### Entre Features e Shared (Path Aliases)
 
 ```typescript
-// ✅ Application importando DTOs organizados por contexto
+// ✅ Feature importando DTOs
 import { CreateTransactionRequestDto } from "@dtos/transaction/request/CreateTransactionRequestDto";
 import { BudgetResponseDto } from "@dtos/budget/response/BudgetResponseDto";
 import { Money } from "@dtos/shared/Money";
 
-// ✅ Infra implementando Application (1 interface por operação)
-import { ICreateBudgetPort } from "@application/ports/mutations/budget/ICreateBudgetPort";
-import { IGetBudgetByIdPort } from "@application/ports/queries/budget/IGetBudgetByIdPort";
-import { CreateBudgetRequestDto } from "@dtos/budget/request/CreateBudgetRequestDto";
+// ✅ Feature importando componentes shared
+import { OsButtonComponent } from "@shared/ui-components/atoms/os-button.component";
+import { OsCardComponent } from "@shared/ui-components/molecules/os-card.component";
+import { OsDataTableComponent } from "@shared/ui-components/organisms/os-data-table.component";
 
-// ✅ UI consumindo Application (padrão Command)
-import { CreateBudgetCommand } from "@application/commands/budget/CreateBudgetCommand";
-import { GetBudgetByIdQuery } from "@application/queries/budget/GetBudgetByIdQuery";
+// ✅ Feature importando serviços globais
+import { AuthService } from "@core/services/auth.service";
+import { ApiService } from "@services/api/api.service";
 ```
 
-### Mesma Camada (Imports Relativos)
+### Dentro de uma Feature (Imports Relativos)
 
 ```typescript
-// ✅ Dentro de commands/budget
-import { CreateBudgetRequestDto } from "@dtos/budget/request/CreateBudgetRequestDto";
-import { ICreateBudgetPort } from "../../ports/mutations/budget/ICreateBudgetPort";
-import { CreateBudgetValidator } from "../../validators/budget/CreateBudgetValidator";
-
-// ✅ Dentro de queries/budget
-import { BudgetResponseDto } from "@dtos/budget/response/BudgetResponseDto";
-import { IGetBudgetByIdPort } from "../../ports/queries/budget/IGetBudgetByIdPort";
-
-// ✅ Dentro de components
+// ✅ Dentro de features/budgets/components
 import { BudgetCardComponent } from "./budget-card.component";
+import { BudgetFormComponent } from "./budget-form.component";
+
+// ✅ Dentro de features/budgets/services
+import { BudgetService } from "./budget.service";
+import { BudgetStateService } from "./budget-state.service";
+
+// ✅ Feature importando DTOs específicos
+import { CreateBudgetRequestDto } from "@dtos/budget/request/CreateBudgetRequestDto";
+import { BudgetResponseDto } from "@dtos/budget/response/BudgetResponseDto";
+```
+
+### Entre Features (Evitar)
+
+```typescript
+// ❌ EVITAR: Importação direta entre features
+import { BudgetCardComponent } from "@features/budgets/components/budget-card.component";
+
+// ✅ PREFERIR: Usar shared components ou services globais
+import { OsCardComponent } from "@shared/ui-components/molecules/os-card.component";
+import { ApiService } from "@services/api/api.service";
 ```
 
 ## Evoluções Planejadas
 
-### Workspaces (Futuro)
+### Feature Maturity (Médio Prazo)
+
+```
+/app/features/
+├── /budgets/              # Feature madura e isolada
+│   ├── /components/       # Componentes específicos
+│   ├── /services/         # Serviços específicos
+│   ├── /dtos/            # DTOs específicos (se necessário)
+│   └── /tests/           # Testes específicos da feature
+```
+
+### Workspaces (Longo Prazo)
 
 ```
 packages/
-├── @orcasonhos/dtos/       # DTOs + Application
-├── @orcasonhos/infra/      # Infrastructure adapters
+├── @orcasonhos/shared/     # Shared components e utils
+├── @orcasonhos/dtos/       # DTOs compartilhados
 ├── @orcasonhos/ui-kit/     # Design System
 └── @orcasonhos/web-app/    # Angular app shell
 ```
@@ -421,8 +409,8 @@ packages/
 ```
 apps/
 ├── shell/                  # Main app shell
-├── budget-management/      # Budget feature app
-├── transactions/           # Transactions feature app
+├── budget-management/      # Budget feature como micro-frontend
+├── transactions/           # Transactions feature como micro-frontend
 └── shared-ui/             # Shared components library
 ```
 
@@ -431,5 +419,6 @@ apps/
 **Ver também:**
 
 - [Layer Responsibilities](./layer-responsibilities.md) - Detalhes das responsabilidades de cada camada
-- [Dependency Rules](./dependency-rules.md) - Regras de importação entre camadas
+- [Feature Organization](./feature-organization.md) - Como organizar features independentes
+- [Dependency Rules](./dependency-rules.md) - Regras de importação entre features
 - [Naming Conventions](./naming-conventions.md) - Convenções detalhadas de nomenclatura

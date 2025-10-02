@@ -2,23 +2,102 @@
 
 ## Arquitetura de Dependências
 
-A arquitetura frontend segue **DTO-First Architecture** com **inversão de dependências**, onde camadas internas não conhecem camadas externas.
+A arquitetura frontend segue **Feature-Based Architecture** com princípios **DTO-First** e **inversão de dependências**, onde features são isoladas e compartilham apenas componentes e serviços necessários.
 
 ```
 ┌─────────────────────────────────────┐
-│          UI (Angular)               │ ← Pode importar tudo
+│              Features               │ ← Módulos independentes
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐│
+│  │budgets  │ │transac  │ │goals    ││
+│  └─────────┘ └─────────┘ └─────────┘│
 ├─────────────────────────────────────┤
-│        Infra (Adapters)             │ ← Implementa Application
+│              Shared                 │ ← Componentes compartilhados
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐│
+│  │ui-comp  │ │theme    │ │utils    ││
+│  └─────────┘ └─────────┘ └─────────┘│
 ├─────────────────────────────────────┤
-│    Application (Commands/Queries)   │ ← Usa DTOs, define Ports
+│               Core                  │ ← Serviços globais
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐│
+│  │services │ │guards   │ │interc   ││
+│  └─────────┘ └─────────┘ └─────────┘│
 ├─────────────────────────────────────┤
-│           DTOs (Contratos)          │ ← Não depende de nada
+│              DTOs                   │ ← Contratos de API
 └─────────────────────────────────────┘
 ```
 
-## Regras por Camada
+## Regras por Estrutura
 
-### 1. DTOs (Contratos) - Isolamento Total
+### 1. Features - Isolamento e Independência
+
+**Pode Importar:**
+- ✅ DTOs (para tipos e contratos)
+- ✅ Shared components (ui-components, theme, utils)
+- ✅ Core services (auth, config, interceptors)
+- ✅ Services globais (api, state, validation)
+
+**NÃO Pode Importar:**
+- ❌ Outras features diretamente
+- ❌ Componentes específicos de outras features
+- ❌ Serviços específicos de outras features
+
+```typescript
+// ✅ PERMITIDO - Feature importando shared e core
+// features/budgets/components/budget-list.component.ts
+import { BudgetResponseDto } from "@dtos/budget/response/BudgetResponseDto"; // ✅ DTO
+import { OsButtonComponent } from "@shared/ui-components/atoms/os-button"; // ✅ Shared
+import { AuthService } from "@core/services/auth.service"; // ✅ Core
+import { ApiService } from "@services/api/api.service"; // ✅ Global service
+
+// ❌ PROIBIDO - Feature importando outra feature
+import { TransactionCardComponent } from "@features/transactions/components/transaction-card.component"; // ❌
+import { GoalService } from "@features/goals/services/goal.service"; // ❌
+```
+
+### 2. Shared - Componentes Compartilhados
+
+**Pode Importar:**
+- ✅ DTOs (para tipos)
+- ✅ Core services (quando necessário)
+- ✅ Angular framework
+- ✅ Bibliotecas externas
+
+**NÃO Pode Importar:**
+- ❌ Features específicas
+- ❌ Serviços específicos de features
+
+```typescript
+// ✅ PERMITIDO - Shared components
+// shared/ui-components/atoms/os-button/os-button.component.ts
+import { Component, input, output } from "@angular/core"; // ✅ Framework
+import { Money } from "@dtos/shared/Money"; // ✅ DTO
+
+// ❌ PROIBIDO - Shared importando features
+import { BudgetCardComponent } from "@features/budgets/components/budget-card.component"; // ❌
+```
+
+### 3. Core - Serviços Globais
+
+**Pode Importar:**
+- ✅ DTOs (para tipos)
+- ✅ Angular framework
+- ✅ Bibliotecas externas
+- ✅ Services globais
+
+**NÃO Pode Importar:**
+- ❌ Features específicas
+- ❌ Componentes específicos
+
+```typescript
+// ✅ PERMITIDO - Core services
+// core/services/auth.service.ts
+import { Injectable, signal } from "@angular/core"; // ✅ Framework
+import { User } from "@dtos/shared/User"; // ✅ DTO
+
+// ❌ PROIBIDO - Core importando features
+import { BudgetService } from "@features/budgets/services/budget.service"; // ❌
+```
+
+### 4. DTOs (Contratos) - Isolamento Total
 
 **Pode Importar:**
 
@@ -152,11 +231,14 @@ export class CreateTransactionPage {
   "compilerOptions": {
     "baseUrl": "./src",
     "paths": {
-      "@dtos/*": ["dtos/*"],
-      "@application/*": ["application/*"],
-      "@infra/*": ["infra/*"],
       "@app/*": ["app/*"],
-      "@shared/*": ["app/shared/*"]
+      "@core/*": ["app/core/*"],
+      "@shared/*": ["app/shared/*"],
+      "@features/*": ["app/features/*"],
+      "@layouts/*": ["app/layouts/*"],
+      "@dtos/*": ["app/dtos/*"],
+      "@services/*": ["app/services/*"],
+      "@mocks/*": ["mocks/*"]
     }
   }
 }
@@ -174,41 +256,50 @@ export class CreateTransactionPage {
       "error",
       {
         "zones": [
-          // DTOs layer cannot import anything internal
+          // DTOs cannot import anything internal
           {
-            "target": "./src/dtos/**/*",
+            "target": "./src/app/dtos/**/*",
             "from": [
-              "./src/application/**/*",
-              "./src/infra/**/*",
-              "./src/app/**/*"
+              "./src/app/core/**/*",
+              "./src/app/shared/**/*",
+              "./src/app/features/**/*",
+              "./src/app/services/**/*"
             ],
-            "message": "DTOs layer cannot import from other layers"
+            "message": "DTOs cannot import from other app layers"
           },
 
-          // Application cannot import Infra or UI
+          // Features cannot import other features
           {
-            "target": "./src/application/**/*",
-            "from": ["./src/infra/**/*", "./src/app/**/*"],
-            "message": "Application layer cannot import Infrastructure or UI"
+            "target": "./src/app/features/**/*",
+            "from": ["./src/app/features/**/*"],
+            "except": ["./src/app/features/**/index.ts"],
+            "message": "Features cannot import other features directly"
           },
 
-          // Infrastructure cannot import UI components
+          // Shared cannot import features
           {
-            "target": "./src/infra/**/*",
-            "from": ["./src/app/features/**/*", "./src/app/pages/**/*"],
-            "message": "Infrastructure cannot import specific UI components"
+            "target": "./src/app/shared/**/*",
+            "from": ["./src/app/features/**/*"],
+            "message": "Shared components cannot import features"
+          },
+
+          // Core cannot import features
+          {
+            "target": "./src/app/core/**/*",
+            "from": ["./src/app/features/**/*"],
+            "message": "Core services cannot import features"
           }
         ]
       }
     ],
 
-    // Enforce path aliases between layers
+    // Enforce path aliases between structures
     "import/no-relative-parent-imports": [
       "error",
       {
         "ignore": [
-          "./src/models/**/*", // Models can use relative imports within
-          "./src/application/**/*" // Application can use relative imports within
+          "./src/app/features/**/*", // Features can use relative imports within
+          "./src/app/shared/**/*" // Shared can use relative imports within
         ]
       }
     ]
@@ -219,12 +310,12 @@ export class CreateTransactionPage {
 ### Custom ESLint Rule
 
 ```javascript
-// .eslint/rules/layer-boundaries.js
+// .eslint/rules/feature-boundaries.js
 module.exports = {
   meta: {
     type: "problem",
     docs: {
-      description: "Enforce clean architecture layer boundaries",
+      description: "Enforce Feature-Based Architecture boundaries",
     },
   },
 
@@ -235,39 +326,47 @@ module.exports = {
       ImportDeclaration(node) {
         const importPath = node.source.value;
 
-        // DTOs layer violations
-        if (filename.includes("/dtos/")) {
+        // DTOs violations
+        if (filename.includes("/app/dtos/")) {
           if (
-            importPath.includes("@application") ||
-            importPath.includes("@infra") ||
-            importPath.includes("@app")
+            importPath.includes("@core") ||
+            importPath.includes("@shared") ||
+            importPath.includes("@features") ||
+            importPath.includes("@services")
           ) {
             context.report({
               node,
-              message: "DTOs layer cannot import from other internal layers",
+              message: "DTOs cannot import from other app layers",
             });
           }
         }
 
-        // Application layer violations
-        if (filename.includes("/application/")) {
-          if (importPath.includes("@infra") || importPath.includes("@app")) {
+        // Features violations
+        if (filename.includes("/app/features/")) {
+          if (importPath.includes("@features/") && !importPath.includes("index")) {
             context.report({
               node,
-              message: "Application layer cannot import Infrastructure or UI",
+              message: "Features cannot import other features directly",
             });
           }
         }
 
-        // Infrastructure violations
-        if (filename.includes("/infra/")) {
-          if (
-            importPath.includes("@app/features") ||
-            importPath.includes("@app/pages")
-          ) {
+        // Shared violations
+        if (filename.includes("/app/shared/")) {
+          if (importPath.includes("@features/")) {
             context.report({
               node,
-              message: "Infrastructure cannot import specific UI components",
+              message: "Shared components cannot import features",
+            });
+          }
+        }
+
+        // Core violations
+        if (filename.includes("/app/core/")) {
+          if (importPath.includes("@features/")) {
+            context.report({
+              node,
+              message: "Core services cannot import features",
             });
           }
         }
@@ -279,31 +378,45 @@ module.exports = {
 
 ## Padrões de Import
 
-### Entre Camadas Diferentes (Path Aliases Obrigatório)
+### Entre Estruturas Diferentes (Path Aliases Obrigatório)
 
 ```typescript
-// ✅ CORRETO - Path aliases para camadas diferentes
-import { TransactionResponseDto } from "@dtos/transaction/response/TransactionResponseDto";
-import { CreateTransactionCommand } from "@application/commands/transaction/CreateTransactionCommand";
-import { HttpCreateTransactionAdapter } from "@infra/http/adapters/mutations/transaction/HttpCreateTransactionAdapter";
+// ✅ CORRETO - Path aliases para estruturas diferentes
+import { BudgetResponseDto } from "@dtos/budget/response/BudgetResponseDto"; // ✅ DTO
+import { OsButtonComponent } from "@shared/ui-components/atoms/os-button"; // ✅ Shared
+import { AuthService } from "@core/services/auth.service"; // ✅ Core
+import { ApiService } from "@services/api/api.service"; // ✅ Global service
 
-// ❌ EVITAR - Imports relativos entre camadas
-import { TransactionResponseDto } from "../../../dtos/transaction/response/TransactionResponseDto";
-import { CreateTransactionCommand } from "../../application/commands/transaction/CreateTransactionCommand";
+// ❌ EVITAR - Imports relativos entre estruturas
+import { BudgetResponseDto } from "../../../dtos/budget/response/BudgetResponseDto";
+import { OsButtonComponent } from "../../shared/ui-components/atoms/os-button";
 ```
 
-### Mesma Camada (Imports Relativos Recomendados)
+### Dentro da Mesma Feature (Imports Relativos Recomendados)
 
 ```typescript
-// ✅ CORRETO - Imports relativos na mesma camada
-// application/commands/transaction/CreateTransactionCommand.ts
-import { CreateTransactionRequestDto } from "@dtos/transaction/request/CreateTransactionRequestDto";
-import { ICreateTransactionPort } from "../ports/mutations/transaction/ICreateTransactionPort";
-import { CreateTransactionValidator } from "../validators/transaction/CreateTransactionValidator";
+// ✅ CORRETO - Imports relativos dentro da feature
+// features/budgets/components/budget-list.component.ts
+import { BudgetCardComponent } from "./budget-card.component";
+import { BudgetFormComponent } from "./budget-form.component";
+import { BudgetFilters } from "./types/BudgetFilters";
 
-// app/features/transactions/transaction-list.component.ts
-import { TransactionCardComponent } from "./transaction-card.component";
-import { TransactionFilters } from "./types/TransactionFilters";
+// features/budgets/services/budget.service.ts
+import { BudgetStateService } from "./budget-state.service";
+import { BudgetValidator } from "./validators/budget.validator";
+```
+
+### Dentro do Shared (Imports Relativos Recomendados)
+
+```typescript
+// ✅ CORRETO - Imports relativos dentro do shared
+// shared/ui-components/atoms/os-button/os-button.component.ts
+import { ButtonVariant } from "./types/ButtonVariant";
+import { ButtonSize } from "./types/ButtonSize";
+
+// shared/utils/date.util.ts
+import { DateFormat } from "./types/DateFormat";
+import { Timezone } from "./types/Timezone";
 ```
 
 ### Imports de Third-Party Libraries
@@ -317,20 +430,23 @@ import { cloneDeep } from "lodash"; // ✅ Pure utility
 import { HttpClient } from "@angular/common/http"; // ❌ Side effects
 import { Injectable } from "@angular/core"; // ❌ Framework
 
-// ✅ Application - Utilitários + abstrações
+// ✅ Features - Angular + utilitários
+import { Component, inject } from "@angular/core"; // ✅ Framework
+import { FormBuilder } from "@angular/forms"; // ✅ Framework
 import { format } from "date-fns"; // ✅ Pure utility
 
-// ❌ Application - Implementações concretas
-import { HttpClient } from "@angular/common/http"; // ❌ Concrete implementation
+// ✅ Shared - Angular + utilitários
+import { Component, input, output } from "@angular/core"; // ✅ Framework
+import { format } from "date-fns"; // ✅ Pure utility
 
-// ✅ Infrastructure - Qualquer biblioteca
+// ✅ Core - Angular + bibliotecas externas
+import { Injectable, signal } from "@angular/core"; // ✅ Framework
+import { HttpClient } from "@angular/common/http"; // ✅ Framework
+import axios from "axios"; // ✅ External library
+
+// ✅ Services - Qualquer biblioteca
 import { HttpClient } from "@angular/common/http"; // ✅
 import { Injectable } from "@angular/core"; // ✅
-import axios from "axios"; // ✅
-
-// ✅ UI - Angular + qualquer biblioteca
-import { Component } from "@angular/core"; // ✅
-import { FormBuilder } from "@angular/forms"; // ✅
 import { Observable } from "rxjs"; // ✅
 ```
 
@@ -367,101 +483,186 @@ export interface IBudgetPort {
 }
 ```
 
-### Provider Configuration (UI Layer)
+### Provider Configuration (App Level)
 
 ```typescript
-// app/providers/commands-queries.provider.ts
-export function provideCommandsAndQueries(): Provider[] {
-  return [
-    // Commands (concretos)
-    CreateTransactionCommand,
-    UpdateBudgetCommand,
-    DeleteTransactionCommand,
+// app/app.config.ts
+export const appConfig: ApplicationConfig = {
+  providers: [
+    // Core services
+    AuthService,
+    ConfigService,
+    
+    // Global services
+    ApiService,
+    StateService,
+    ValidationService,
+    
+    // HTTP interceptors
+    { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
+    { provide: HTTP_INTERCEPTORS, useClass: ErrorInterceptor, multi: true },
+    
+    // Route guards
+    AuthGuard,
+    RoleGuard,
+  ],
+};
+```
 
-    // Queries (concretos)
-    GetBudgetSummaryQuery,
-    GetTransactionListQuery,
-    GetBudgetByIdQuery,
+### Feature Module Providers
 
-    // Port -> Adapter bindings (1 interface por operação)
-    {
-      provide: ICreateBudgetPort,
-      useClass: HttpCreateBudgetAdapter,
-    },
-    {
-      provide: IGetBudgetByIdPort,
-      useClass: HttpGetBudgetByIdAdapter,
-    },
-    {
-      provide: ICreateTransactionPort,
-      useClass: HttpCreateTransactionAdapter,
-    },
-    {
-      provide: ILocalStorePort,
-      useClass: IndexedDBAdapter,
-    },
-  ];
-}
+```typescript
+// features/budgets/budgets.module.ts
+@NgModule({
+  declarations: [
+    BudgetListComponent,
+    BudgetFormComponent,
+    BudgetCardComponent,
+  ],
+  imports: [
+    CommonModule,
+    SharedModule,
+    BudgetsRoutingModule,
+  ],
+  providers: [
+    // Feature-specific services
+    BudgetService,
+    BudgetStateService,
+    BudgetValidator,
+  ],
+})
+export class BudgetsModule {}
 ```
 
 ### Constructor Injection Strategy
 
 ```typescript
-// ✅ CORRETO - Application layer usa interfaces
-export class CreateTransactionCommand {
-  constructor(
-    private port: ICreateTransactionPort  // Interface
-  ) {}
-}
-
-// ✅ CORRETO - Infrastructure implementa interfaces
+// ✅ CORRETO - Feature service injeta dependências
 @Injectable({ providedIn: 'root' })
-export class HttpCreateTransactionAdapter implements ICreateTransactionPort {
+export class BudgetService {
   constructor(
-    private httpClient: IHttpClient  // Também interface
+    private apiService: ApiService, // ✅ Global service
+    private authService: AuthService, // ✅ Core service
+    private budgetStateService: BudgetStateService // ✅ Feature service
   ) {}
 }
 
-// ✅ CORRETO - UI injeta commands/queries concretos
+// ✅ CORRETO - Feature component injeta services
 @Component({...})
-export class CreateTransactionPage {
-  private createTransactionCommand = inject(CreateTransactionCommand); // Concreto
+export class BudgetListComponent {
+  private budgetService = inject(BudgetService); // ✅ Feature service
+  private authService = inject(AuthService); // ✅ Core service
+  private dateUtil = inject(DateUtil); // ✅ Shared utility
+}
+
+// ✅ CORRETO - Shared component injeta dependências
+@Component({...})
+export class OsButtonComponent {
+  constructor(
+    private themeService: ThemeService // ✅ Shared service
+  ) {}
+}
+
+// ✅ CORRETO - Core service injeta dependências
+@Injectable({ providedIn: 'root' })
+export class AuthService {
+  constructor(
+    private httpClient: HttpClient, // ✅ Angular service
+    private configService: ConfigService // ✅ Core service
+  ) {}
 }
 ```
 
 ## Testes e Boundaries
 
-### Unit Tests - Mock Interfaces
+### Unit Tests - Feature Components
 
 ```typescript
-// ✅ Application layer tests
-describe("CreateTransactionCommand", () => {
-  let mockPort: jest.Mocked<ICreateTransactionPort>;
+// ✅ Feature component tests
+describe("BudgetListComponent", () => {
+  let component: BudgetListComponent;
+  let mockBudgetService: jest.Mocked<BudgetService>;
+  let mockAuthService: jest.Mocked<AuthService>;
 
   beforeEach(() => {
-    mockPort = {
-      execute: jest.fn(),
-    } as jest.Mocked<ICreateTransactionPort>;
+    mockBudgetService = {
+      getBudgets: jest.fn(),
+      createBudget: jest.fn(),
+    } as jest.Mocked<BudgetService>;
+
+    mockAuthService = {
+      getCurrentUser: jest.fn(),
+    } as jest.Mocked<AuthService>;
+
+    component = new BudgetListComponent(mockBudgetService, mockAuthService);
   });
 
-  // Tests não conhecem implementação concreta
+  it("should load budgets on init", async () => {
+    const mockBudgets = [/* mock data */];
+    mockBudgetService.getBudgets.mockResolvedValue(mockBudgets);
+
+    await component.ngOnInit();
+
+    expect(mockBudgetService.getBudgets).toHaveBeenCalled();
+    expect(component.budgets()).toEqual(mockBudgets);
+  });
 });
 ```
 
-### Integration Tests - Real Implementations
+### Unit Tests - Shared Components
 
 ```typescript
-// ✅ Infrastructure layer tests
-describe("HttpCreateTransactionAdapter", () => {
-  let adapter: HttpCreateTransactionAdapter;
-  let httpClient: IHttpClient; // Pode ser mock HTTP client
+// ✅ Shared component tests
+describe("OsButtonComponent", () => {
+  let component: OsButtonComponent;
+  let mockThemeService: jest.Mocked<ThemeService>;
 
   beforeEach(() => {
-    httpClient = new MockHttpClient();
-    adapter = new HttpCreateTransactionAdapter(httpClient);
+    mockThemeService = {
+      getPrimaryColor: jest.fn(),
+    } as jest.Mocked<ThemeService>;
+
+    component = new OsButtonComponent(mockThemeService);
   });
 
-  // Testa implementação concreta
+  it("should apply correct color based on variant", () => {
+    component.variant = "primary";
+    expect(component.matColor()).toBe("primary");
+  });
+});
+```
+
+### Integration Tests - Feature Services
+
+```typescript
+// ✅ Feature service integration tests
+describe("BudgetService", () => {
+  let service: BudgetService;
+  let mockApiService: jest.Mocked<ApiService>;
+  let mockAuthService: jest.Mocked<AuthService>;
+
+  beforeEach(() => {
+    mockApiService = {
+      get: jest.fn(),
+      post: jest.fn(),
+    } as jest.Mocked<ApiService>;
+
+    mockAuthService = {
+      getCurrentUser: jest.fn(),
+    } as jest.Mocked<AuthService>;
+
+    service = new BudgetService(mockApiService, mockAuthService, mockBudgetStateService);
+  });
+
+  it("should fetch budgets from API", async () => {
+    const mockBudgets = [/* mock data */];
+    mockApiService.get.mockResolvedValue(mockBudgets);
+
+    const result = await service.getBudgets();
+
+    expect(mockApiService.get).toHaveBeenCalledWith("/budgets");
+    expect(result).toEqual(mockBudgets);
+  });
 });
 ```
 
@@ -523,7 +724,7 @@ jobs:
 
 **Ver também:**
 
-- [Directory Structure](./directory-structure.md) - Organização física das camadas
-- [Layer Responsibilities](./layer-responsibilities.md) - O que cada camada deve fazer
-- [DTO-First Principles](./dto-first-principles.md) - Princípios fundamentais da arquitetura
+- [Directory Structure](./directory-structure.md) - Organização física das features
+- [Layer Responsibilities](./layer-responsibilities.md) - O que cada estrutura deve fazer
+- [Feature Organization](./feature-organization.md) - Como organizar features independentes
 - [Testing Strategy](./testing-strategy.md) - Como testar respeitando boundaries

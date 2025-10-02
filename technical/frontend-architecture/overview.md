@@ -9,12 +9,32 @@ document_type: "technical_architecture"
 domain: "frontend_architecture"
 audience: ["frontend_developers", "architects", "tech_leads"]
 complexity: "intermediate"
-tags: ["angular", "spa", "dto_first", "typescript", "architecture_patterns"]
+tags:
+  [
+    "angular",
+    "spa",
+    "dto_first",
+    "feature_based",
+    "typescript",
+    "architecture_patterns",
+  ]
 related_docs:
-  ["domain-ontology.md", "directory-structure.md", "layer-responsibilities.md"]
-ai_context: "Frontend architecture overview for Angular-based OrçaSonhos application using DTO-First approach"
+  [
+    "domain-ontology.md",
+    "directory-structure.md",
+    "layer-responsibilities.md",
+    "feature-organization.md",
+  ]
+ai_context: "Frontend architecture overview for Angular-based OrçaSonhos application using Feature-Based Architecture with DTO-First principles"
 technologies: ["Angular", "TypeScript", "RxJS", "Angular Material", "Firebase"]
-patterns: ["DTO-First Architecture", "CQRS", "Offline-First", "HTTP Adapters"]
+patterns:
+  [
+    "Feature-Based Architecture",
+    "DTO-First Architecture",
+    "CQRS",
+    "Offline-First",
+    "HTTP Adapters",
+  ]
 last_updated: "2025-01-24"
 ```
 
@@ -22,32 +42,58 @@ last_updated: "2025-01-24"
 
 ## Decisão Arquitetural Principal
 
-O OrçaSonhos frontend é uma **Single Page Application (SPA)** em Angular com TypeScript, estruturada seguindo **DTO-First Architecture** para máxima simplicidade e alinhamento com o backend.
+O OrçaSonhos frontend é uma **Single Page Application (SPA)** em Angular com TypeScript, estruturada seguindo **Feature-Based Architecture** com princípios **DTO-First** para máxima simplicidade, alinhamento com o backend e escalabilidade.
 
 ## Princípios Fundamentais
 
-### 1. DTOs como Cidadãos de Primeira Classe
+### 1. Organização por Features
+
+- **Features** são módulos independentes de funcionalidades de negócio
+- **Lazy Loading** por feature para otimização de performance
+- **Isolamento** de código relacionado em uma única localização
+- **Escalabilidade** através de desenvolvimento paralelo de features
+
+### 2. DTOs como Cidadãos de Primeira Classe
 
 - **DTOs** representam contratos diretos com o backend
 - **Estado da aplicação** trabalha diretamente com DTOs
 - **Componentes** recebem e exibem DTOs sem transformações complexas
 - **Simplicidade** através de estruturas de dados diretas
 
-### 2. Arquitetura em Camadas Simplificada
+### 3. Arquitetura Feature-Based com DTO-First
 
 ```
 ┌─────────────────────────────────────┐
-│             UI (Angular)            │ ← Componentes, páginas, estado local
-├─────────────────────────────────────┤
-│        Infra (HTTP Adapters)        │ ← HTTP clients, storage, auth
-├─────────────────────────────────────┤
-│    Application (Use Cases)          │ ← Orquestração e validações básicas
-├─────────────────────────────────────┤
-│           DTOs (Contratos)          │ ← Interfaces TypeScript alinhadas à API
+│              /src/app               │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐│
+│  │/features│/shared   │/core      ││
+│  │         │ │         │ │         ││
+│  │┌───────┐│ │┌───────┐│ │┌───────┐││
+│  ││budgets││ ││ui-comp││ ││services│││
+│  ││transac││ ││theme  ││ ││guards  │││
+│  ││goals  ││ ││utils  ││ ││interc  │││
+│  │└───────┘│ │└───────┘│ │└───────┘││
+│  └─────────┘ └─────────┘ └─────────┘│
 └─────────────────────────────────────┘
 ```
 
-### 3. Alinhamento Total com Backend via DTOs
+### 4. Estrutura Interna das Features
+
+Cada feature mantém a arquitetura DTO-First em camadas:
+
+```
+┌─────────────────────────────────────┐
+│             UI (Components)         │ ← Componentes da feature
+├─────────────────────────────────────┤
+│        Infra (HTTP Adapters)        │ ← HTTP clients específicos
+├─────────────────────────────────────┤
+│    Application (Use Cases)          │ ← Orquestração da feature
+├─────────────────────────────────────┤
+│           DTOs (Contratos)          │ ← DTOs específicos da feature
+└─────────────────────────────────────┘
+```
+
+### 5. Alinhamento Total com Backend via DTOs
 
 - **CQRS**: Separação entre Commands (mutations) e Queries (reads)
 - **Command-Style Endpoints**: `POST /<context>/<action>` para mutações
@@ -60,7 +106,14 @@ O OrçaSonhos frontend é uma **Single Page Application (SPA)** em Angular com T
 
 - **Escopo inicial**: Apenas CSR para MVP
 - **Evolução futura**: SSR/SEO com Angular Universal se necessário
-- **Performance**: Lazy loading por feature/contexto
+- **Performance**: Lazy loading por feature para otimização de bundle
+
+### Feature-Based Organization
+
+- **Features Independentes**: Cada funcionalidade é um módulo isolado
+- **Lazy Loading**: Features carregadas sob demanda
+- **Desenvolvimento Paralelo**: Múltiplas features podem ser desenvolvidas simultaneamente
+- **Manutenibilidade**: Código relacionado agrupado em uma localização
 
 ### UI System Strategy
 
@@ -187,6 +240,7 @@ export class GetBudgetListQuery {
 - ✅ Firebase Auth + Offline-first
 - ✅ MSW para mocks realistas
 - ✅ DTO-First Architecture implementada
+- 🔄 **Feature-Based Architecture**: Migração em andamento
 
 ### Médio Prazo
 
@@ -194,17 +248,21 @@ export class GetBudgetListQuery {
 - 🔄 **SSR/SEO**: Angular Universal para páginas públicas
 - 🔄 **Advanced PWA**: Background sync, push notifications
 - 🔄 **OpenAPI Integration**: Geração automática de DTOs
+- 🔄 **Feature Maturity**: Features completamente isoladas e testáveis
 
 ### Longo Prazo
 
-- 🚀 **Workspaces**: Extração de camadas para pacotes independentes
-- 🚀 **Micro-Frontends**: Se necessário para escalabilidade de times
+- 🚀 **Workspaces**: Extração de features para pacotes independentes
+- 🚀 **Micro-Frontends**: Features como micro-frontends independentes
 - 🚀 **Type-Safe APIs**: Contratos compartilhados entre frontend e backend
+- 🚀 **Feature Marketplace**: Reutilização de features entre projetos
 
 ---
 
 **Ver também:**
 
-- [Directory Structure](./directory-structure.md) - Como organizar o código nas camadas
+- [Directory Structure](./directory-structure.md) - Como organizar o código por features
 - [Layer Responsibilities](./layer-responsibilities.md) - O que cada camada faz
+- [Feature Organization](./feature-organization.md) - Como organizar features independentes
 - [UI System](./ui-system.md) - Strategy do Design System e componentes
+- [State Management](./state-management.md) - Estratégia de estado com Angular Signals

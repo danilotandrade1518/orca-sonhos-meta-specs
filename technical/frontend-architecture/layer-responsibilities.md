@@ -1,6 +1,292 @@
 # Responsabilidades das Camadas
 
-## 1. DTOs - Contratos de API
+## 1. Features - Módulos de Funcionalidades
+
+### Responsabilidades
+
+- **Isolamento de Funcionalidades**: Cada feature é um módulo independente
+- **Componentes Específicos**: Componentes Angular específicos da funcionalidade
+- **Serviços Específicos**: Serviços e lógica de negócio da feature
+- **Roteamento**: Roteamento específico da feature com lazy loading
+- **Estado Local**: Gerenciamento de estado específico da feature
+- **DTOs Específicos**: DTOs específicos da feature (quando necessário)
+
+### Características
+
+- **Lazy Loading**: Carregamento sob demanda para otimização de performance
+- **Isolamento**: Dependências mínimas entre features
+- **Escalabilidade**: Desenvolvimento paralelo de features
+- **Manutenibilidade**: Código relacionado agrupado em uma localização
+- **DTO-First**: Mantém princípios DTO-First dentro da feature
+
+### Estrutura Interna de uma Feature
+
+```
+/features/budgets/
+├── /components/           # Componentes específicos
+│   ├── budget-list.component.ts
+│   ├── budget-form.component.ts
+│   └── budget-card.component.ts
+├── /services/            # Serviços específicos
+│   ├── budget.service.ts
+│   └── budget-state.service.ts
+├── /dtos/               # DTOs específicos (se necessário)
+│   ├── request/
+│   └── response/
+├── budgets.module.ts    # Módulo da feature
+└── budgets-routing.module.ts # Roteamento da feature
+```
+
+### Exemplos Práticos
+
+#### Feature Module
+
+```typescript
+// features/budgets/budgets.module.ts
+@NgModule({
+  declarations: [BudgetListComponent, BudgetFormComponent, BudgetCardComponent],
+  imports: [CommonModule, SharedModule, BudgetsRoutingModule],
+  providers: [BudgetService, BudgetStateService],
+})
+export class BudgetsModule {}
+```
+
+#### Feature Service
+
+```typescript
+// features/budgets/services/budget.service.ts
+@Injectable({ providedIn: "root" })
+export class BudgetService {
+  constructor(
+    private createBudgetCommand: CreateBudgetCommand,
+    private getBudgetListQuery: GetBudgetListQuery,
+    private getBudgetByIdQuery: GetBudgetByIdQuery
+  ) {}
+
+  async createBudget(
+    dto: CreateBudgetRequestDto
+  ): Promise<Either<ServiceError, void>> {
+    return this.createBudgetCommand.execute(dto);
+  }
+
+  async getBudgets(): Promise<Either<ServiceError, BudgetResponseDto[]>> {
+    return this.getBudgetListQuery.execute({});
+  }
+
+  async getBudgetById(
+    id: string
+  ): Promise<Either<ServiceError, BudgetResponseDto>> {
+    return this.getBudgetByIdQuery.execute(id);
+  }
+}
+```
+
+#### Feature State Service
+
+```typescript
+// features/budgets/services/budget-state.service.ts
+@Injectable({ providedIn: "root" })
+export class BudgetStateService {
+  // Estado local da feature usando Angular Signals
+  private budgets = signal<BudgetResponseDto[]>([]);
+  private loading = signal(false);
+  private error = signal<string | null>(null);
+
+  // Getters públicos
+  readonly budgets$ = this.budgets.asReadonly();
+  readonly loading$ = this.loading.asReadonly();
+  readonly error$ = this.error.asReadonly();
+
+  // Actions
+  setBudgets(budgets: BudgetResponseDto[]): void {
+    this.budgets.set(budgets);
+  }
+
+  setLoading(loading: boolean): void {
+    this.loading.set(loading);
+  }
+
+  setError(error: string | null): void {
+    this.error.set(error);
+  }
+
+  clearError(): void {
+    this.error.set(null);
+  }
+}
+```
+
+---
+
+## 2. Core - Serviços Globais
+
+### Responsabilidades
+
+- **Singleton Services**: Serviços que existem uma única vez na aplicação
+- **Global Configuration**: Configurações que afetam toda a aplicação
+- **HTTP Interceptors**: Interceptadores globais para autenticação, logging, etc.
+- **Route Guards**: Guards globais para autenticação e autorização
+- **Bootstrap Services**: Serviços necessários para inicialização da aplicação
+
+### Características
+
+- **Singleton**: Inicializados uma única vez
+- **Global**: Compartilhados entre todas as features
+- **Infrastructure**: Serviços de infraestrutura e configuração
+- **Cross-Cutting**: Funcionalidades que cortam todas as features
+
+### Exemplos Práticos
+
+#### Auth Service
+
+```typescript
+// core/services/auth.service.ts
+@Injectable({ providedIn: "root" })
+export class AuthService {
+  private user = signal<User | null>(null);
+  private isAuthenticated = signal(false);
+
+  readonly user$ = this.user.asReadonly();
+  readonly isAuthenticated$ = this.isAuthenticated.asReadonly();
+
+  async login(
+    email: string,
+    password: string
+  ): Promise<Either<AuthError, void>> {
+    // Implementação de login
+  }
+
+  async logout(): Promise<void> {
+    // Implementação de logout
+  }
+
+  getCurrentUser(): User | null {
+    return this.user();
+  }
+}
+```
+
+#### HTTP Interceptor
+
+```typescript
+// core/interceptors/auth.interceptor.ts
+@Injectable()
+export class AuthInterceptor implements HttpInterceptor {
+  constructor(private authService: AuthService) {}
+
+  intercept(
+    req: HttpRequest<any>,
+    next: HttpHandler
+  ): Observable<HttpEvent<any>> {
+    const token = this.authService.getToken();
+
+    if (token) {
+      const authReq = req.clone({
+        setHeaders: { Authorization: `Bearer ${token}` },
+      });
+      return next.handle(authReq);
+    }
+
+    return next.handle(req);
+  }
+}
+```
+
+---
+
+## 3. Shared - Componentes e Utilitários Compartilhados
+
+### Responsabilidades
+
+- **UI Components**: Design System com abstração sobre Angular Material
+- **Theme**: Customizações de tema Material Design
+- **Pipes**: Pipes compartilhados entre features
+- **Directives**: Directives compartilhadas entre features
+- **Utils**: Utilitários e helpers compartilhados
+- **Layouts**: Componentes de layout compartilhados
+
+### Características
+
+- **Reutilizáveis**: Usados por múltiplas features
+- **Independentes**: Sem dependências de features específicas
+- **Design System**: Abstração sobre Angular Material
+- **Consistentes**: Padrões visuais e de comportamento uniformes
+
+### Exemplos Práticos
+
+#### UI Component (Atom)
+
+```typescript
+// shared/ui-components/atoms/os-button/os-button.component.ts
+@Component({
+  selector: "os-button",
+  template: `
+    <button
+      mat-button
+      [color]="matColor()"
+      [disabled]="disabled()"
+      [attr.aria-label]="ariaLabel()"
+      (click)="onClick.emit($event)"
+    >
+      @if (loading()) {
+      <mat-spinner diameter="16" />
+      } @else {
+      <ng-content />
+      }
+    </button>
+  `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class OsButtonComponent {
+  variant = input<"primary" | "secondary" | "danger">("primary");
+  disabled = input(false);
+  loading = input(false);
+  ariaLabel = input<string>();
+
+  onClick = output<MouseEvent>();
+
+  protected matColor = computed(() => {
+    const variant = this.variant();
+    return variant === "primary"
+      ? "primary"
+      : variant === "danger"
+      ? "warn"
+      : "accent";
+  });
+}
+```
+
+#### Utility Service
+
+```typescript
+// shared/utils/date.util.ts
+@Injectable({ providedIn: "root" })
+export class DateUtil {
+  formatDate(date: string | Date, format: "short" | "long" = "short"): string {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+
+    return format === "short"
+      ? dateObj.toLocaleDateString("pt-BR")
+      : dateObj.toLocaleDateString("pt-BR", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+  }
+
+  formatCurrency(amountInCents: number): string {
+    const amount = amountInCents / 100;
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(amount);
+  }
+}
+```
+
+---
+
+## 4. DTOs - Contratos de API
 
 ### Responsabilidades
 
@@ -548,40 +834,78 @@ export class OsButtonComponent {
 
 ---
 
-## Fluxo de Integração Entre Camadas
+## Fluxo de Integração Entre Features
 
-### Command Flow
+### Feature Internal Flow
 
 ```
-[UI Component]
+[Feature Component]
     ↓ (user action - DTO)
-[Command]
+[Feature Service]
+    ↓ (orquestração)
+[Command/Query]
     ↓ (validação básica)
 [Port Interface]
     ↓ (execute method)
 [HTTP Adapter]
-    ↓ (POST com DTO)
+    ↓ (POST/GET com DTO)
 [Backend API]
 ```
 
-### Query Flow
+### Inter-Feature Communication
 
 ```
-[UI Component]
-    ↓ (data request)
-[Query]
-    ↓ (execute method)
-[Port Interface]
-    ↓ (execute method)
-[HTTP Adapter]
-    ↓ (Response DTO)
-[UI Component] (exibe DTO diretamente)
+[Feature A Component]
+    ↓ (event/state change)
+[Shared Service/State]
+    ↓ (notificação)
+[Feature B Component]
+    ↓ (reação ao evento)
+[Feature B Service]
+    ↓ (atualização local)
+[Feature B State]
 ```
+
+### Shared Component Usage
+
+```
+[Feature Component]
+    ↓ (template usage)
+[Shared UI Component]
+    ↓ (props/events)
+[Feature Component]
+    ↓ (handling)
+[Feature Service]
+```
+
+## Regras de Comunicação Entre Features
+
+### ✅ Permitido
+
+- **Shared Components**: Features podem usar componentes shared
+- **Core Services**: Features podem usar serviços globais (Auth, Config)
+- **DTOs**: Features podem usar DTOs compartilhados
+- **Events**: Features podem emitir eventos globais via services
+- **State**: Features podem reagir a mudanças de estado global
+
+### ❌ Evitar
+
+- **Importação Direta**: Features não devem importar componentes de outras features
+- **Dependências Circulares**: Features não devem depender umas das outras
+- **Estado Compartilhado**: Evitar estado compartilhado entre features específicas
+
+### 🔄 Alternativas Recomendadas
+
+- **Shared Services**: Usar serviços compartilhados para comunicação
+- **Event Bus**: Usar eventos para comunicação assíncrona
+- **State Management**: Usar estado global apenas quando necessário
+- **Props/Events**: Usar props e events para comunicação entre componentes
 
 ---
 
 **Ver também:**
 
-- [Directory Structure](./directory-structure.md) - Organização física das camadas
-- [Dependency Rules](./dependency-rules.md) - Regras de dependência entre camadas
+- [Directory Structure](./directory-structure.md) - Organização física das features
+- [Feature Organization](./feature-organization.md) - Como organizar features independentes
+- [Dependency Rules](./dependency-rules.md) - Regras de dependência entre features
 - [Data Flow](./data-flow.md) - Fluxos de Commands e Queries detalhados
