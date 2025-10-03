@@ -1,4 +1,4 @@
-# Estratégia de Testes - DTO-First Architecture
+# Estratégia de Testes - Feature-Based Architecture
 
 ---
 
@@ -9,12 +9,19 @@ document_type: "technical_architecture"
 domain: "frontend_architecture"
 audience: ["frontend_developers", "qa_engineers", "tech_leads"]
 complexity: "intermediate"
-tags: ["testing_strategy", "dto_first", "frontend", "typescript"]
+tags:
+  ["testing_strategy", "feature_based", "dto_first", "frontend", "typescript"]
 related_docs:
-  ["dto-first-principles.md", "dto-conventions.md", "backend-integration.md"]
-ai_context: "Comprehensive testing strategy for DTO-First Architecture frontend applications"
-technologies: ["TypeScript", "Angular", "Jest", "MSW", "DTOs"]
-patterns: ["DTO-First", "API-First", "Test-Driven Development"]
+  [
+    "feature-organization.md",
+    "dto-first-principles.md",
+    "dto-conventions.md",
+    "backend-integration.md",
+  ]
+ai_context: "Comprehensive testing strategy for Feature-Based Architecture with DTO-First principles"
+technologies:
+  ["TypeScript", "Angular", "Jest", "MSW", "DTOs", "Angular Signals"]
+patterns: ["Feature-Based", "DTO-First", "API-First", "Test-Driven Development"]
 last_updated: "2025-01-24"
 ```
 
@@ -22,15 +29,178 @@ last_updated: "2025-01-24"
 
 ## Filosofia de Testes
 
+- **Feature-Based Testing**: Testes organizados por módulos de funcionalidade
 - **DTO-First Testing**: Testes focados em DTOs como contratos principais
 - **API Contract Testing**: Validação de contratos entre frontend e backend
 - **Behavior-Focused**: Testes verificam comportamento, não implementação
 - **Fast Feedback**: Testes unitários rápidos, integração quando necessário
 - **Realistic Mocking**: MSW para mocks de API realistas
+- **Isolated Features**: Cada feature testada independentemente
+- **Angular Signals**: Testes de estado reativo moderno
 
 ## Tipos de Teste por Camada
 
-### 1. DTOs e Validações - 100% Testável
+### 1. Features (Módulos de Funcionalidade) - Feature-Based Testing
+
+**Características:**
+
+- **Isolated Testing**: Cada feature testada como módulo independente
+- **Feature Boundaries**: Testes respeitam limites entre features
+- **DTO Communication**: Validação de comunicação via DTOs entre features
+- **Angular Signals**: Testes de estado reativo por feature
+- **Lazy Loading**: Validação de carregamento sob demanda
+
+```typescript
+// app/features/budgets/components/budget-list.component.spec.ts
+describe("BudgetListComponent", () => {
+  let component: BudgetListComponent;
+  let fixture: ComponentFixture<BudgetListComponent>;
+  let budgetService: jasmine.SpyObj<BudgetService>;
+  let budgetState: jasmine.SpyObj<BudgetState>;
+
+  beforeEach(async () => {
+    const budgetServiceSpy = jasmine.createSpyObj("BudgetService", [
+      "getBudgets",
+      "createBudget",
+    ]);
+    const budgetStateSpy = jasmine.createSpyObj("BudgetState", [
+      "budgets",
+      "loading",
+      "error",
+      "setBudgets",
+      "setLoading",
+      "setError",
+    ]);
+
+    await TestBed.configureTestingModule({
+      imports: [BudgetListComponent],
+      providers: [
+        { provide: BudgetService, useValue: budgetServiceSpy },
+        { provide: BudgetState, useValue: budgetStateSpy },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(BudgetListComponent);
+    component = fixture.componentInstance;
+    budgetService = TestBed.inject(
+      BudgetService
+    ) as jasmine.SpyObj<BudgetService>;
+    budgetState = TestBed.inject(BudgetState) as jasmine.SpyObj<BudgetState>;
+  });
+
+  describe("when loading budgets", () => {
+    it("should load budgets on init", () => {
+      // Arrange
+      const mockBudgets: BudgetResponseDto[] = [createMockBudgetDto()];
+      budgetService.getBudgets.and.returnValue(of(mockBudgets));
+      budgetState.budgets = signal(mockBudgets);
+
+      // Act
+      component.ngOnInit();
+
+      // Assert
+      expect(budgetService.getBudgets).toHaveBeenCalled();
+      expect(component.budgets()).toEqual(mockBudgets);
+    });
+
+    it("should handle loading state", () => {
+      // Arrange
+      budgetState.loading = signal(true);
+
+      // Act
+      fixture.detectChanges();
+
+      // Assert
+      expect(component.loading()).toBe(true);
+      const loadingElement = fixture.debugElement.query(
+        By.css("[data-testid='loading-skeleton']")
+      );
+      expect(loadingElement).toBeTruthy();
+    });
+
+    it("should handle error state", () => {
+      // Arrange
+      budgetState.error = signal("Failed to load budgets");
+
+      // Act
+      fixture.detectChanges();
+
+      // Assert
+      expect(component.error()).toBe("Failed to load budgets");
+      const errorElement = fixture.debugElement.query(
+        By.css("[data-testid='error-message']")
+      );
+      expect(errorElement).toBeTruthy();
+    });
+  });
+
+  describe("budget interactions", () => {
+    it("should create budget with valid DTO", () => {
+      // Arrange
+      const createBudgetDto: CreateBudgetRequestDto = {
+        name: "New Budget",
+        limitInCents: 200000,
+        description: "Test description",
+      };
+      const createdBudget: BudgetResponseDto = createMockBudgetDto({
+        ...createBudgetDto,
+        id: "budget-123",
+      });
+
+      budgetService.createBudget.and.returnValue(of(createdBudget));
+      budgetService.getBudgets.and.returnValue(of([createdBudget]));
+
+      // Act
+      component.createBudget(createBudgetDto);
+
+      // Assert
+      expect(budgetService.createBudget).toHaveBeenCalledWith(createBudgetDto);
+      expect(budgetService.getBudgets).toHaveBeenCalled();
+    });
+
+    it("should navigate to budget details", () => {
+      // Arrange
+      const budget: BudgetResponseDto = createMockBudgetDto();
+      const routerSpy = spyOn(TestBed.inject(Router), "navigate");
+
+      // Act
+      component.viewBudget(budget);
+
+      // Assert
+      expect(routerSpy).toHaveBeenCalledWith(["/budgets", budget.id]);
+    });
+  });
+});
+```
+
+**Estrutura de Testes por Feature:**
+
+```
+app/features/
+├── budgets/
+│   ├── components/
+│   │   ├── budget-list.component.spec.ts
+│   │   ├── budget-card.component.spec.ts
+│   │   └── budget-form.component.spec.ts
+│   ├── services/
+│   │   └── budget.service.spec.ts
+│   ├── state/
+│   │   └── budget.state.spec.ts
+│   └── pages/
+│       └── budget-list.page.spec.ts
+├── transactions/
+│   ├── components/
+│   ├── services/
+│   ├── state/
+│   └── pages/
+└── goals/
+    ├── components/
+    ├── services/
+    ├── state/
+    └── pages/
+```
+
+### 2. DTOs e Validações - 100% Testável
 
 **Características:**
 
@@ -1295,39 +1465,93 @@ module.exports = function (config) {
 
 ```
 src/
-  application/
-    dtos/
-      validators/
-        - CreateBudgetValidator.spec.ts
-        - CreateTransactionValidator.spec.ts
-    use-cases/
-      - CreateBudgetUseCase.spec.ts
-      - GetBudgetListUseCase.spec.ts
-  infrastructure/
-    adapters/
-      - HttpBudgetServiceAdapter.integration.spec.ts
   app/
     features/
       budgets/
+        components/
+          - budget-list.component.spec.ts
+          - budget-card.component.spec.ts
+          - budget-form.component.spec.ts
+        services/
+          - budget.service.spec.ts
+        state/
+          - budget.state.spec.ts
         pages/
           - budget-list.page.spec.ts
+        - budgets.module.spec.ts
+      transactions/
         components/
-          - budget-card.component.spec.ts
+          - transaction-list.component.spec.ts
+          - transaction-form.component.spec.ts
+        services/
+          - transaction.service.spec.ts
+        state/
+          - transaction.state.spec.ts
+        pages/
+          - transaction-list.page.spec.ts
+        - transactions.module.spec.ts
+      goals/
+        components/
+          - goal-list.component.spec.ts
+          - goal-form.component.spec.ts
+        services/
+          - goal.service.spec.ts
+        state/
+          - goal.state.spec.ts
+        pages/
+          - goal-list.page.spec.ts
+        - goals.module.spec.ts
+    shared/
+      ui-components/
+        atoms/
+          - os-button.component.spec.ts
+          - os-input.component.spec.ts
+        molecules/
+          - os-form-field.component.spec.ts
+        organisms/
+          - os-data-table.component.spec.ts
+      pipes/
+        - currency.pipe.spec.ts
+        - date.pipe.spec.ts
+      directives/
+        - os-tooltip.directive.spec.ts
+    dtos/
+      budget/
+        - budget.dto.spec.ts
+        - create-budget.dto.spec.ts
+      transaction/
+        - transaction.dto.spec.ts
+        - create-transaction.dto.spec.ts
+      shared/
+        - validation.dto.spec.ts
+    services/
+      api/
+        - api.service.spec.ts
+      state/
+        - app.state.spec.ts
   test/
     factories/
       - DtoFactory.ts
+      - FeatureFactory.ts
     builders/
       - BudgetDtoBuilder.ts
       - TransactionDtoBuilder.ts
+      - FeatureStateBuilder.ts
     helpers/
       - dtoValidationHelpers.ts
+      - featureTestingHelpers.ts
+    mocks/
+      - featureMocks.ts
+      - apiHandlers.ts
 ```
 
 ---
 
 **Ver também:**
 
+- [Feature Organization](./feature-organization.md) - Organização de features e estrutura
 - [DTO-First Principles](./dto-first-principles.md) - Princípios fundamentais da arquitetura
 - [DTO Conventions](./dto-conventions.md) - Convenções para DTOs
+- [State Management](./state-management.md) - Gerenciamento de estado com Angular Signals
 - [MSW Configuration](./msw-configuration.md) - Configuração detalhada do Mock Service Worker
 - [Backend Integration](./backend-integration.md) - Integração com APIs
