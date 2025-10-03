@@ -40,6 +40,13 @@ last_updated: "2025-01-24"
 - **Angular Material + CDK** - Sistema de UI (com camada de abstração)
 - **Angular Signals** - Gerenciamento de estado reativo
 
+### Arquitetura
+
+- **Feature-Based Architecture** - Organização por funcionalidades de negócio
+- **DTO-First Architecture** - DTOs como cidadãos de primeira classe
+- **Lazy Loading** - Features carregadas sob demanda
+- **Clean Boundaries** - Separação clara entre features e shared
+
 ### Build & Development
 
 - **Angular CLI** - Toolchain e build system
@@ -58,6 +65,15 @@ last_updated: "2025-01-24"
 
 - **Angular Service Worker** - Cache e funcionalidades PWA
 - **IndexedDB** - Armazenamento local offline-first
+
+### Feature-Based Development
+
+- **Angular Modules** - Organização modular por features
+- **Lazy Loading Routes** - Carregamento sob demanda de features
+- **Feature Guards** - Proteção de rotas por feature
+- **Feature Services** - Serviços específicos por feature
+- **Shared Services** - Serviços compartilhados entre features
+- **Design System Integration** - Componentes reutilizáveis por feature
 
 ## Backend
 
@@ -100,8 +116,10 @@ last_updated: "2025-01-24"
 
 ### Monorepo/Workspace
 
-- **Path aliases** - Imports entre camadas
+- **Path aliases** - Imports entre camadas e features
 - **Boundary rules** - Validação de dependências via ESLint
+- **Feature boundaries** - Validação de dependências entre features
+- **Import restrictions** - Regras de import entre features e shared
 
 ## Infraestrutura & Deploy
 
@@ -143,9 +161,20 @@ last_updated: "2025-01-24"
 - **docker-compose.yml** - Orquestração local
 - **.env** - Variáveis de ambiente
 
+### Configurações Feature-Based
+
+- **tsconfig.paths.json** - Path aliases para features e shared
+- **eslint.feature-boundaries.js** - Regras de dependência entre features
+- **angular-lazy-loading.json** - Configuração de lazy loading por feature
+- **feature-modules.config.js** - Configuração de módulos por feature
+
 ## Observações
 
 - Stack orientado para **desenvolvimento full-stack TypeScript**
 - **Offline-first** e **mobile-first** como princípios transversais
 - **Clean Architecture** aplicada tanto no frontend quanto backend
 - **Testabilidade** como prioridade em todas as camadas
+- **Feature-Based Architecture** para melhor escalabilidade e manutenibilidade
+- **DTO-First** mantido como princípio fundamental
+- **Lazy Loading** para otimização de performance
+- **Design System** isolado para reutilização entre features
