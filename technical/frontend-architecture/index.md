@@ -66,6 +66,10 @@ Requisitos a11y, testes de teclado/foco e tokens de design para contraste
 
 Testes unitários, MSW para mocks de API, cobertura e estratégia E2E com Playwright
 
+### **[Feature Testing Patterns](./feature-testing-patterns.md)**
+
+Padrões específicos para testes de features, mocks, factories e helpers de teste
+
 ### **[MSW Configuration](./msw-configuration.md)**
 
 Mock Service Worker: organização de handlers, inicialização e convenções de desenvolvimento
@@ -98,16 +102,29 @@ Organização por contexto de negócio, lazy loading e estrutura de páginas/wid
 
 i18n strategy, formatação de dados e neutralidade de Domain/Application
 
+## 🚀 Guias de Implementação
+
+### **[Implementation Guide](./implementation-guide.md)**
+
+Guia passo a passo para implementar Feature-Based Architecture, configuração inicial e exemplos práticos
+
+### **[Feature Examples](./feature-examples.md)**
+
+Exemplos completos de features (simples, complexas, com estado) e padrões de implementação
+
 ## 📍 Guias de Uso por Contexto
 
 ### Para Desenvolvedores Frontend
 
 1. **[Overview](./overview.md)** - Entender princípios fundamentais da Feature-Based Architecture
-2. **[Directory Structure](./directory-structure.md)** + **[Layer Responsibilities](./layer-responsibilities.md)** - Organização por features
-3. **[Feature Organization](./feature-organization.md)** - Estrutura interna das features
-4. **[State Management](./state-management.md)** - Gerenciamento de estado com Angular Signals
-5. **[UI System](./ui-system.md)** - Componentes e Design System
-6. Demais arquivos conforme necessidade específica
+2. **[Implementation Guide](./implementation-guide.md)** - Guia passo a passo para implementar
+3. **[Feature Examples](./feature-examples.md)** - Exemplos práticos de implementação
+4. **[Directory Structure](./directory-structure.md)** + **[Layer Responsibilities](./layer-responsibilities.md)** - Organização por features
+5. **[Feature Organization](./feature-organization.md)** - Estrutura interna das features
+6. **[State Management](./state-management.md)** - Gerenciamento de estado com Angular Signals
+7. **[UI System](./ui-system.md)** - Componentes e Design System
+8. **[Feature Testing Patterns](./feature-testing-patterns.md)** - Padrões de teste para features
+9. Demais arquivos conforme necessidade específica
 
 ### Para UI/UX Designers
 
