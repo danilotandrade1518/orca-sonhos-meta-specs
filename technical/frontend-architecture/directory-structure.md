@@ -33,43 +33,27 @@ A estrutura segue **Feature-Based Architecture** com princípios **DTO-First**, 
       /dashboard          # Dashboard principal
         /components       # Componentes específicos do dashboard
         /services         # Serviços específicos do dashboard
-        /dashboard.module.ts
-        /dashboard-routing.module.ts
       /budgets            # Gestão de orçamentos
         /components       # Componentes de orçamento
         /services         # Serviços de orçamento
-        /budgets.module.ts
-        /budgets-routing.module.ts
       /transactions       # Gestão de transações
         /components       # Componentes de transação
         /services         # Serviços de transação
-        /transactions.module.ts
-        /transactions-routing.module.ts
       /goals              # Gestão de metas
         /components       # Componentes de metas
         /services         # Serviços de metas
-        /goals.module.ts
-        /goals-routing.module.ts
       /accounts           # Gestão de contas
         /components       # Componentes de contas
         /services         # Serviços de contas
-        /accounts.module.ts
-        /accounts-routing.module.ts
       /credit-cards       # Gestão de cartões de crédito
         /components       # Componentes de cartões
         /services         # Serviços de cartões
-        /credit-cards.module.ts
-        /credit-cards-routing.module.ts
       /reports            # Relatórios e análises
         /components       # Componentes de relatórios
         /services         # Serviços de relatórios
-        /reports.module.ts
-        /reports-routing.module.ts
       /onboarding         # Fluxo de onboarding
         /components       # Componentes de onboarding
         /services         # Serviços de onboarding
-        /onboarding.module.ts
-        /onboarding-routing.module.ts
 
     /layouts              # Layouts da aplicação
       /main-layout        # Layout principal da aplicação
