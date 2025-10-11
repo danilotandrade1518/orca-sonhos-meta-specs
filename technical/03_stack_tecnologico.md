@@ -53,7 +53,7 @@ last_updated: "2025-01-24"
 - **Vite** - Build tool e dev server (se aplicável)
 - **ESLint** - Linting de código
 - **Prettier** - Formatação de código
-- **Karma + Jasmine** - Testes unitários
+- **Vitest** - Testes unitários
 - **Playwright** - Testes E2E
 
 ### Networking & Mocks

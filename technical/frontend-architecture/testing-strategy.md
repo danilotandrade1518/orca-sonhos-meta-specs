@@ -20,7 +20,7 @@ related_docs:
   ]
 ai_context: "Comprehensive testing strategy for Feature-Based Architecture with DTO-First principles"
 technologies:
-  ["TypeScript", "Angular", "Jest", "MSW", "DTOs", "Angular Signals"]
+  ["TypeScript", "Angular", "Vitest", "MSW", "DTOs", "Angular Signals"]
 patterns: ["Feature-Based", "DTO-First", "API-First", "Test-Driven Development"]
 last_updated: "2025-01-24"
 ```
@@ -55,22 +55,22 @@ last_updated: "2025-01-24"
 describe("BudgetListComponent", () => {
   let component: BudgetListComponent;
   let fixture: ComponentFixture<BudgetListComponent>;
-  let budgetService: jasmine.SpyObj<BudgetService>;
-  let budgetState: jasmine.SpyObj<BudgetState>;
+  let budgetService: any;
+  let budgetState: any;
 
   beforeEach(async () => {
-    const budgetServiceSpy = jasmine.createSpyObj("BudgetService", [
-      "getBudgets",
-      "createBudget",
-    ]);
-    const budgetStateSpy = jasmine.createSpyObj("BudgetState", [
-      "budgets",
-      "loading",
-      "error",
-      "setBudgets",
-      "setLoading",
-      "setError",
-    ]);
+    const budgetServiceSpy = {
+      getBudgets: vi.fn(),
+      createBudget: vi.fn(),
+    };
+    const budgetStateSpy = {
+      budgets: vi.fn(),
+      loading: vi.fn(),
+      error: vi.fn(),
+      setBudgets: vi.fn(),
+      setLoading: vi.fn(),
+      setError: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [BudgetListComponent],
@@ -82,17 +82,15 @@ describe("BudgetListComponent", () => {
 
     fixture = TestBed.createComponent(BudgetListComponent);
     component = fixture.componentInstance;
-    budgetService = TestBed.inject(
-      BudgetService
-    ) as jasmine.SpyObj<BudgetService>;
-    budgetState = TestBed.inject(BudgetState) as jasmine.SpyObj<BudgetState>;
+    budgetService = TestBed.inject(BudgetService);
+    budgetState = TestBed.inject(BudgetState);
   });
 
   describe("when loading budgets", () => {
     it("should load budgets on init", () => {
       // Arrange
       const mockBudgets: BudgetResponseDto[] = [createMockBudgetDto()];
-      budgetService.getBudgets.and.returnValue(of(mockBudgets));
+      budgetService.getBudgets.mockReturnValue(of(mockBudgets));
       budgetState.budgets = signal(mockBudgets);
 
       // Act
@@ -147,8 +145,8 @@ describe("BudgetListComponent", () => {
         id: "budget-123",
       });
 
-      budgetService.createBudget.and.returnValue(of(createdBudget));
-      budgetService.getBudgets.and.returnValue(of([createdBudget]));
+      budgetService.createBudget.mockReturnValue(of(createdBudget));
+      budgetService.getBudgets.mockReturnValue(of([createdBudget]));
 
       // Act
       component.createBudget(createBudgetDto);
@@ -993,12 +991,25 @@ import { handlers } from "./handlers";
 export const worker = setupWorker(...handlers);
 ```
 
-### Test Setup para Karma
+### Test Setup para Vitest
 
 ```typescript
 // src/test-setup.ts
+import "zone.js/testing";
+import { getTestBed } from "@angular/core/testing";
+import {
+  BrowserDynamicTestingModule,
+  platformBrowserDynamicTesting,
+} from "@angular/platform-browser-dynamic/testing";
 import { setupServer } from "msw/node";
 import { handlers } from "./mocks/handlers";
+import { beforeAll, afterEach, afterAll } from "vitest";
+
+// Setup Angular testing environment
+getTestBed().initTestEnvironment(
+  BrowserDynamicTestingModule,
+  platformBrowserDynamicTesting()
+);
 
 // Setup MSW server para testes
 const server = setupServer(...handlers);
@@ -1367,61 +1378,71 @@ export function expectValidCreateBudgetDto(dto: CreateBudgetRequestDto): void {
 
 ### Coverage Thresholds
 
-```json
-// karma.conf.js
-module.exports = function (config) {
-  config.set({
-    coverageReporter: {
-      dir: require('path').join(__dirname, './coverage'),
-      subdir: '.',
-      reporters: [
-        { type: 'html' },
-        { type: 'text-summary' },
-        { type: 'json-summary' }
+```typescript
+// vitest.config.ts
+import { defineConfig } from "vitest/config";
+import angular from "@analogjs/vite-plugin-angular";
+
+export default defineConfig({
+  plugins: [angular()],
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: ["src/test-setup.ts"],
+    include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html"],
+      reportsDirectory: "./coverage",
+      exclude: [
+        "node_modules/",
+        "src/test-setup.ts",
+        "src/**/*.d.ts",
+        "src/**/*.config.ts",
+        "src/**/*.interface.ts",
+        "src/**/*.type.ts",
+        "src/**/*.enum.ts",
+        "src/**/*.constant.ts",
+        "src/**/*.mock.ts",
+        "src/**/*.stub.ts",
+        "src/**/*.spec.ts",
+        "src/**/*.test.ts",
       ],
-      check: {
+      thresholds: {
         global: {
-          statements: 80,
-          branches: 75,
+          branches: 80,
           functions: 80,
-          lines: 80
+          lines: 80,
+          statements: 80,
         },
-        each: {
-          statements: 70,
-          branches: 65,
-          functions: 70,
-          lines: 70,
-          overrides: {
-            'src/application/dtos/**/*': {
-              statements: 95,
-              branches: 90,
-              functions: 95,
-              lines: 95
-            },
-            'src/application/validators/**/*': {
-              statements: 90,
-              branches: 85,
-              functions: 90,
-              lines: 90
-            },
-            'src/application/use-cases/**/*': {
-              statements: 85,
-              branches: 80,
-              functions: 85,
-              lines: 85
-            },
-            'src/infrastructure/adapters/**/*': {
-              statements: 80,
-              branches: 75,
-              functions: 80,
-              lines: 80
-            }
-          }
-        }
-      }
-    }
-  });
-};
+        "./src/application/dtos/**/*": {
+          branches: 95,
+          functions: 95,
+          lines: 95,
+          statements: 95,
+        },
+        "./src/application/validators/**/*": {
+          branches: 90,
+          functions: 90,
+          lines: 90,
+          statements: 90,
+        },
+        "./src/application/use-cases/**/*": {
+          branches: 85,
+          functions: 85,
+          lines: 85,
+          statements: 85,
+        },
+        "./src/infrastructure/adapters/**/*": {
+          branches: 80,
+          functions: 80,
+          lines: 80,
+          statements: 80,
+        },
+      },
+    },
+  },
+});
 ```
 
 ### Scripts de Teste
@@ -1430,13 +1451,18 @@ module.exports = function (config) {
 // package.json
 {
   "scripts": {
-    "test": "ng test",
-    "test:watch": "ng test --watch",
-    "test:ci": "ng test --watch=false --browsers=ChromeHeadless --code-coverage",
-    "test:coverage": "ng test --code-coverage --watch=false",
-    "test:debug": "ng test --source-map=false",
-    "test:dto": "ng test --include='**/*dto*.spec.ts'",
-    "test:contract": "ng test --include='**/*contract*.spec.ts'"
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "test:run": "vitest run",
+    "test:ci": "vitest run --coverage --reporter=verbose",
+    "test:debug": "vitest --inspect-brk",
+    "test:dto": "vitest run --include='**/*dto*.spec.ts'",
+    "test:contract": "vitest run --include='**/*contract*.spec.ts'",
+    "test:features": "vitest run --include='**/features/**/*.spec.ts'",
+    "test:shared": "vitest run --include='**/shared/**/*.spec.ts'",
+    "test:state": "vitest run --include='**/state/**/*.spec.ts'"
   }
 }
 ```

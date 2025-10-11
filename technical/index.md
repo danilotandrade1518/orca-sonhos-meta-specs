@@ -39,7 +39,7 @@ Este diretório contém toda a documentação técnica do projeto OrçaSonhos, c
 
 **Estratégia de Testes**
 
-- Testes unitários (Karma+Jasmine/Jest) com 80% cobertura mínima
+- Testes unitários (Vitest/Jest) com 80% cobertura mínima
 - E2E com Playwright para fluxos críticos
 - MSW para mocks de API e estratégia offline/PWA
 

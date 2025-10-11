@@ -23,7 +23,7 @@ Esta estratégia define as práticas, ferramentas e processos de teste para gara
 
 **Ferramentas**:
 
-- **Frontend**: Karma + Jasmine
+- **Frontend**: Vitest
 - **Backend**: Jest com TypeScript
 
 **Estratégia**:
@@ -64,7 +64,7 @@ src/
 
 **Ferramentas**:
 
-- **Angular Testing**: Karma + Jasmine + Angular Testing Utilities
+- **Angular Testing**: Vitest + Angular Testing Utilities
 - **MSW**: Mock Service Worker para APIs
 - **Angular Signals**: Testes de estado reativo
 
@@ -184,19 +184,19 @@ describe("Offline Sync", () => {
 describe("BudgetListComponent", () => {
   let component: BudgetListComponent;
   let fixture: ComponentFixture<BudgetListComponent>;
-  let budgetService: jasmine.SpyObj<BudgetService>;
-  let budgetState: jasmine.SpyObj<BudgetState>;
+  let budgetService: any;
+  let budgetState: any;
 
   beforeEach(async () => {
-    const budgetServiceSpy = jasmine.createSpyObj("BudgetService", [
-      "getBudgets",
-      "createBudget",
-    ]);
-    const budgetStateSpy = jasmine.createSpyObj("BudgetState", [
-      "budgets",
-      "loading",
-      "error",
-    ]);
+    const budgetServiceSpy = {
+      getBudgets: vi.fn(),
+      createBudget: vi.fn(),
+    };
+    const budgetStateSpy = {
+      budgets: vi.fn(),
+      loading: vi.fn(),
+      error: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [BudgetListComponent],
@@ -208,17 +208,15 @@ describe("BudgetListComponent", () => {
 
     fixture = TestBed.createComponent(BudgetListComponent);
     component = fixture.componentInstance;
-    budgetService = TestBed.inject(
-      BudgetService
-    ) as jasmine.SpyObj<BudgetService>;
-    budgetState = TestBed.inject(BudgetState) as jasmine.SpyObj<BudgetState>;
+    budgetService = TestBed.inject(BudgetService);
+    budgetState = TestBed.inject(BudgetState);
   });
 
   describe("ngOnInit", () => {
     it("should load budgets on init", () => {
       // Arrange
       const mockBudgets: BudgetDto[] = [BudgetDtoFactory.create()];
-      budgetService.getBudgets.and.returnValue(of(mockBudgets));
+      budgetService.getBudgets.mockReturnValue(of(mockBudgets));
       budgetState.budgets = signal(mockBudgets);
 
       // Act
@@ -254,21 +252,21 @@ describe("BudgetListComponent", () => {
 ```typescript
 describe("BudgetService", () => {
   let service: BudgetService;
-  let httpClient: jasmine.SpyObj<HttpClient>;
-  let budgetState: jasmine.SpyObj<BudgetState>;
+  let httpClient: any;
+  let budgetState: any;
 
   beforeEach(() => {
-    const httpClientSpy = jasmine.createSpyObj("HttpClient", [
-      "get",
-      "post",
-      "put",
-      "delete",
-    ]);
-    const budgetStateSpy = jasmine.createSpyObj("BudgetState", [
-      "setBudgets",
-      "setLoading",
-      "setError",
-    ]);
+    const httpClientSpy = {
+      get: vi.fn(),
+      post: vi.fn(),
+      put: vi.fn(),
+      delete: vi.fn(),
+    };
+    const budgetStateSpy = {
+      setBudgets: vi.fn(),
+      setLoading: vi.fn(),
+      setError: vi.fn(),
+    };
 
     TestBed.configureTestingModule({
       providers: [
@@ -279,15 +277,15 @@ describe("BudgetService", () => {
     });
 
     service = TestBed.inject(BudgetService);
-    httpClient = TestBed.inject(HttpClient) as jasmine.SpyObj<HttpClient>;
-    budgetState = TestBed.inject(BudgetState) as jasmine.SpyObj<BudgetState>;
+    httpClient = TestBed.inject(HttpClient);
+    budgetState = TestBed.inject(BudgetState);
   });
 
   describe("getBudgets", () => {
     it("should fetch budgets and update state", () => {
       // Arrange
       const mockBudgets: BudgetDto[] = [BudgetDtoFactory.create()];
-      httpClient.get.and.returnValue(of(mockBudgets));
+      httpClient.get.mockReturnValue(of(mockBudgets));
 
       // Act
       service.getBudgets().subscribe();
@@ -303,7 +301,7 @@ describe("BudgetService", () => {
         status: 500,
         statusText: "Internal Server Error",
       });
-      httpClient.get.and.returnValue(throwError(() => error));
+      httpClient.get.mockReturnValue(throwError(() => error));
 
       // Act
       service.getBudgets().subscribe({
@@ -599,28 +597,28 @@ describe("MoneyVo", () => {
 
 ```typescript
 // Mock para serviços de feature
-export const createMockBudgetService = (): jasmine.SpyObj<BudgetService> => ({
-  getBudgets: jasmine.createSpy("getBudgets"),
-  createBudget: jasmine.createSpy("createBudget"),
-  updateBudget: jasmine.createSpy("updateBudget"),
-  deleteBudget: jasmine.createSpy("deleteBudget"),
+export const createMockBudgetService = () => ({
+  getBudgets: vi.fn(),
+  createBudget: vi.fn(),
+  updateBudget: vi.fn(),
+  deleteBudget: vi.fn(),
 });
 
 // Mock para estado de feature
-export const createMockBudgetState = (): jasmine.SpyObj<BudgetState> => ({
-  budgets: jasmine.createSpy("budgets"),
-  loading: jasmine.createSpy("loading"),
-  error: jasmine.createSpy("error"),
-  setBudgets: jasmine.createSpy("setBudgets"),
-  setLoading: jasmine.createSpy("setLoading"),
-  setError: jasmine.createSpy("setError"),
+export const createMockBudgetState = () => ({
+  budgets: vi.fn(),
+  loading: vi.fn(),
+  error: vi.fn(),
+  setBudgets: vi.fn(),
+  setLoading: vi.fn(),
+  setError: vi.fn(),
 });
 
 // Mock para comunicação entre features
 export const createMockFeatureCommunication = () => ({
-  notifyBudgetCreated: jasmine.createSpy("notifyBudgetCreated"),
-  notifyBudgetUpdated: jasmine.createSpy("notifyBudgetUpdated"),
-  notifyBudgetDeleted: jasmine.createSpy("notifyBudgetDeleted"),
+  notifyBudgetCreated: vi.fn(),
+  notifyBudgetUpdated: vi.fn(),
+  notifyBudgetDeleted: vi.fn(),
 });
 ```
 
@@ -894,18 +892,21 @@ it("should calculate user age correctly", () => {
 
 ```json
 {
-  "test": "ng test",
-  "test:watch": "ng test --watch",
-  "test:coverage": "ng test --code-coverage",
-  "test:features": "ng test --include='**/features/**/*.spec.ts'",
-  "test:shared": "ng test --include='**/shared/**/*.spec.ts'",
-  "test:dtos": "ng test --include='**/dtos/**/*.spec.ts'",
-  "test:state": "ng test --include='**/state/**/*.spec.ts'",
+  "test": "vitest",
+  "test:watch": "vitest --watch",
+  "test:ui": "vitest --ui",
+  "test:coverage": "vitest --coverage",
+  "test:run": "vitest run",
+  "test:ci": "vitest run --coverage --reporter=verbose",
+  "test:features": "vitest run --include='**/features/**/*.spec.ts'",
+  "test:shared": "vitest run --include='**/shared/**/*.spec.ts'",
+  "test:dtos": "vitest run --include='**/dtos/**/*.spec.ts'",
+  "test:state": "vitest run --include='**/state/**/*.spec.ts'",
   "test:e2e": "playwright test",
   "test:e2e:ui": "playwright test --ui",
-  "test:budgets": "ng test --include='**/features/budgets/**/*.spec.ts'",
-  "test:transactions": "ng test --include='**/features/transactions/**/*.spec.ts'",
-  "test:goals": "ng test --include='**/features/goals/**/*.spec.ts'"
+  "test:budgets": "vitest run --include='**/features/budgets/**/*.spec.ts'",
+  "test:transactions": "vitest run --include='**/features/transactions/**/*.spec.ts'",
+  "test:goals": "vitest run --include='**/features/goals/**/*.spec.ts'"
 }
 ```
 

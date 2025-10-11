@@ -1127,10 +1127,12 @@ import { Budget } from "../types/budget.types"; // Feature types
 describe("ComponentName", () => {
   let component: ComponentName;
   let fixture: ComponentFixture<ComponentName>;
-  let service: jasmine.SpyObj<ServiceName>;
+  let service: any;
 
   beforeEach(async () => {
-    const serviceSpy = jasmine.createSpyObj("ServiceName", ["method"]);
+    const serviceSpy = {
+      method: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [ComponentName],
@@ -1139,7 +1141,7 @@ describe("ComponentName", () => {
 
     fixture = TestBed.createComponent(ComponentName);
     component = fixture.componentInstance;
-    service = TestBed.inject(ServiceName) as jasmine.SpyObj<ServiceName>;
+    service = TestBed.inject(ServiceName);
   });
 
   it("should create", () => {

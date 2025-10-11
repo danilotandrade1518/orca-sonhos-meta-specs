@@ -96,20 +96,20 @@ module.exports = {
           {
             target: "./app/features/*",
             from: "./app/features/*",
-            except: ["./app/features/shared/*"]
+            except: ["./app/features/shared/*"],
           },
           {
             target: "./app/core/*",
-            from: "./app/features/*"
+            from: "./app/features/*",
           },
           {
             target: "./app/shared/*",
-            from: "./app/features/*"
-          }
-        ]
-      }
-    ]
-  }
+            from: "./app/features/*",
+          },
+        ],
+      },
+    ],
+  },
 };
 ```
 
@@ -138,19 +138,21 @@ import { ErrorInterceptor } from "./interceptors/error.interceptor";
     {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthInterceptor,
-      multi: true
+      multi: true,
     },
     {
       provide: HTTP_INTERCEPTORS,
       useClass: ErrorInterceptor,
-      multi: true
-    }
-  ]
+      multi: true,
+    },
+  ],
 })
 export class CoreModule {
   constructor(@Optional() @SkipSelf() parentModule: CoreModule) {
     if (parentModule) {
-      throw new Error("CoreModule já foi carregado. Importe apenas no AppModule.");
+      throw new Error(
+        "CoreModule já foi carregado. Importe apenas no AppModule."
+      );
     }
   }
 }
@@ -165,7 +167,7 @@ import { Injectable, signal, computed } from "@angular/core";
 import { User } from "@dtos/shared/user.dto";
 
 @Injectable({
-  providedIn: "root"
+  providedIn: "root",
 })
 export class AuthService {
   private readonly _user = signal<User | null>(null);
@@ -202,18 +204,8 @@ import { ThemeModule } from "./theme/theme.module";
 
 @NgModule({
   declarations: [],
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    UiComponentsModule,
-    ThemeModule
-  ],
-  exports: [
-    CommonModule,
-    ReactiveFormsModule,
-    UiComponentsModule,
-    ThemeModule
-  ]
+  imports: [CommonModule, ReactiveFormsModule, UiComponentsModule, ThemeModule],
+  exports: [CommonModule, ReactiveFormsModule, UiComponentsModule, ThemeModule],
 })
 export class SharedModule {}
 ```
@@ -234,22 +226,9 @@ import { InputComponent } from "./atoms/input/input.component";
 import { CardComponent } from "./molecules/card/card.component";
 
 @NgModule({
-  declarations: [
-    ButtonComponent,
-    InputComponent,
-    CardComponent
-  ],
-  imports: [
-    CommonModule,
-    MatButtonModule,
-    MatCardModule,
-    MatInputModule
-  ],
-  exports: [
-    ButtonComponent,
-    InputComponent,
-    CardComponent
-  ]
+  declarations: [ButtonComponent, InputComponent, CardComponent],
+  imports: [CommonModule, MatButtonModule, MatCardModule, MatInputModule],
+  exports: [ButtonComponent, InputComponent, CardComponent],
 })
 export class UiComponentsModule {}
 ```
@@ -288,17 +267,10 @@ import { BudgetState } from "./state/budget.state";
   declarations: [
     BudgetListComponent,
     BudgetDetailComponent,
-    BudgetCardComponent
+    BudgetCardComponent,
   ],
-  imports: [
-    CommonModule,
-    SharedModule,
-    BudgetsRoutingModule
-  ],
-  providers: [
-    BudgetService,
-    BudgetState
-  ]
+  imports: [CommonModule, SharedModule, BudgetsRoutingModule],
+  providers: [BudgetService, BudgetState],
 })
 export class BudgetsModule {}
 ```
@@ -317,17 +289,17 @@ import { BudgetDetailComponent } from "./pages/budget-detail/budget-detail.compo
 const routes: Routes = [
   {
     path: "",
-    component: BudgetListComponent
+    component: BudgetListComponent,
   },
   {
     path: ":id",
-    component: BudgetDetailComponent
-  }
+    component: BudgetDetailComponent,
+  },
 ];
 
 @NgModule({
   imports: [RouterModule.forChild(routes)],
-  exports: [RouterModule]
+  exports: [RouterModule],
 })
 export class BudgetsRoutingModule {}
 ```
@@ -344,7 +316,7 @@ import { ApiService } from "@services/api.service";
 import { CreateBudgetDto, UpdateBudgetDto, BudgetDto } from "@dtos/budget";
 
 @Injectable({
-  providedIn: "root"
+  providedIn: "root",
 })
 export class BudgetService {
   private readonly apiService = inject(ApiService);
@@ -380,7 +352,7 @@ import { Injectable, signal, computed } from "@angular/core";
 import { BudgetDto } from "@dtos/budget";
 
 @Injectable({
-  providedIn: "root"
+  providedIn: "root",
 })
 export class BudgetState {
   private readonly _budgets = signal<BudgetDto[]>([]);
@@ -398,20 +370,20 @@ export class BudgetState {
   }
 
   addBudget(budget: BudgetDto): void {
-    this._budgets.update(current => [...current, budget]);
+    this._budgets.update((current) => [...current, budget]);
   }
 
   updateBudget(updatedBudget: BudgetDto): void {
-    this._budgets.update(current =>
-      current.map(budget =>
+    this._budgets.update((current) =>
+      current.map((budget) =>
         budget.id === updatedBudget.id ? updatedBudget : budget
       )
     );
   }
 
   removeBudget(id: string): void {
-    this._budgets.update(current =>
-      current.filter(budget => budget.id !== id)
+    this._budgets.update((current) =>
+      current.filter((budget) => budget.id !== id)
     );
   }
 
@@ -448,25 +420,25 @@ import { BudgetCardComponent } from "../../components/molecules/budget-card/budg
   template: `
     <div class="budget-list">
       <h1>Orçamentos</h1>
-      
+
       @if (budgetState.loading()) {
-        <div class="loading">Carregando...</div>
+      <div class="loading">Carregando...</div>
       } @else if (budgetState.error()) {
-        <div class="error">{{ budgetState.error() }}</div>
+      <div class="error">{{ budgetState.error() }}</div>
       } @else {
-        <div class="budget-grid">
-          @for (budget of budgetState.budgets(); track budget.id) {
-            <app-budget-card
-              [budget]="budget"
-              (edit)="onEditBudget($event)"
-              (delete)="onDeleteBudget($event)"
-            />
-          }
-        </div>
+      <div class="budget-grid">
+        @for (budget of budgetState.budgets(); track budget.id) {
+        <app-budget-card
+          [budget]="budget"
+          (edit)="onEditBudget($event)"
+          (delete)="onDeleteBudget($event)"
+        />
+        }
+      </div>
       }
     </div>
   `,
-  styleUrls: ["./budget-list.component.scss"]
+  styleUrls: ["./budget-list.component.scss"],
 })
 export class BudgetListComponent implements OnInit {
   private readonly budgetService = inject(BudgetService);
@@ -481,14 +453,14 @@ export class BudgetListComponent implements OnInit {
     this.budgetState.setError(null);
 
     this.budgetService.getBudgets().subscribe({
-      next: budgets => {
+      next: (budgets) => {
         this.budgetState.setBudgets(budgets);
         this.budgetState.setLoading(false);
       },
-      error: error => {
+      error: (error) => {
         this.budgetState.setError("Erro ao carregar orçamentos");
         this.budgetState.setLoading(false);
-      }
+      },
     });
   }
 
@@ -523,35 +495,34 @@ import { BudgetDto } from "@dtos/budget";
         <mat-card-title>{{ budget.name }}</mat-card-title>
         <mat-card-subtitle>{{ budget.category }}</mat-card-subtitle>
       </mat-card-header>
-      
+
       <mat-card-content>
         <div class="budget-amount">
-          <span class="amount">{{ budget.amount | currency:'BRL' }}</span>
+          <span class="amount">{{ budget.amount | currency : "BRL" }}</span>
           <span class="period">{{ budget.period }}</span>
         </div>
-        
+
         <div class="budget-progress">
           <mat-progress-bar
-            [value]="budget.usedAmount / budget.amount * 100"
+            [value]="(budget.usedAmount / budget.amount) * 100"
             mode="determinate"
           ></mat-progress-bar>
           <span class="progress-text">
-            {{ budget.usedAmount | currency:'BRL' }} de {{ budget.amount | currency:'BRL' }}
+            {{ budget.usedAmount | currency : "BRL" }} de
+            {{ budget.amount | currency : "BRL" }}
           </span>
         </div>
       </mat-card-content>
-      
+
       <mat-card-actions>
-        <button mat-button (click)="onEdit.emit(budget.id)">
-          Editar
-        </button>
+        <button mat-button (click)="onEdit.emit(budget.id)">Editar</button>
         <button mat-button color="warn" (click)="onDelete.emit(budget.id)">
           Excluir
         </button>
       </mat-card-actions>
     </mat-card>
   `,
-  styleUrls: ["./budget-card.component.scss"]
+  styleUrls: ["./budget-card.component.scss"],
 })
 export class BudgetCardComponent {
   @Input({ required: true }) budget!: BudgetDto;
@@ -577,57 +548,67 @@ const routes: Routes = [
   {
     path: "",
     redirectTo: "/dashboard",
-    pathMatch: "full"
+    pathMatch: "full",
   },
   {
     path: "dashboard",
     loadChildren: () =>
-      import("@features/dashboard/dashboard.module").then(m => m.DashboardModule)
+      import("@features/dashboard/dashboard.module").then(
+        (m) => m.DashboardModule
+      ),
   },
   {
     path: "budgets",
     loadChildren: () =>
-      import("@features/budgets/budgets.module").then(m => m.BudgetsModule)
+      import("@features/budgets/budgets.module").then((m) => m.BudgetsModule),
   },
   {
     path: "transactions",
     loadChildren: () =>
-      import("@features/transactions/transactions.module").then(m => m.TransactionsModule)
+      import("@features/transactions/transactions.module").then(
+        (m) => m.TransactionsModule
+      ),
   },
   {
     path: "goals",
     loadChildren: () =>
-      import("@features/goals/goals.module").then(m => m.GoalsModule)
+      import("@features/goals/goals.module").then((m) => m.GoalsModule),
   },
   {
     path: "accounts",
     loadChildren: () =>
-      import("@features/accounts/accounts.module").then(m => m.AccountsModule)
+      import("@features/accounts/accounts.module").then(
+        (m) => m.AccountsModule
+      ),
   },
   {
     path: "credit-cards",
     loadChildren: () =>
-      import("@features/credit-cards/credit-cards.module").then(m => m.CreditCardsModule)
+      import("@features/credit-cards/credit-cards.module").then(
+        (m) => m.CreditCardsModule
+      ),
   },
   {
     path: "reports",
     loadChildren: () =>
-      import("@features/reports/reports.module").then(m => m.ReportsModule)
+      import("@features/reports/reports.module").then((m) => m.ReportsModule),
   },
   {
     path: "onboarding",
     loadChildren: () =>
-      import("@features/onboarding/onboarding.module").then(m => m.OnboardingModule)
+      import("@features/onboarding/onboarding.module").then(
+        (m) => m.OnboardingModule
+      ),
   },
   {
     path: "**",
-    redirectTo: "/dashboard"
-  }
+    redirectTo: "/dashboard",
+  },
 ];
 
 @NgModule({
   imports: [RouterModule.forRoot(routes)],
-  exports: [RouterModule]
+  exports: [RouterModule],
 })
 export class AppRoutingModule {}
 ```
@@ -715,8 +696,8 @@ import { BudgetDto } from "@dtos/budget";
 describe("BudgetListComponent", () => {
   let component: BudgetListComponent;
   let fixture: ComponentFixture<BudgetListComponent>;
-  let budgetService: jasmine.SpyObj<BudgetService>;
-  let budgetState: jasmine.SpyObj<BudgetState>;
+  let budgetService: any;
+  let budgetState: any;
 
   const mockBudgets: BudgetDto[] = [
     {
@@ -729,34 +710,36 @@ describe("BudgetListComponent", () => {
       startDate: "2025-01-01",
       endDate: "2025-01-31",
       createdAt: "2025-01-01T00:00:00Z",
-      updatedAt: "2025-01-01T00:00:00Z"
-    }
+      updatedAt: "2025-01-01T00:00:00Z",
+    },
   ];
 
   beforeEach(async () => {
-    const budgetServiceSpy = jasmine.createSpyObj("BudgetService", ["getBudgets"]);
-    const budgetStateSpy = jasmine.createSpyObj("BudgetState", [
-      "setLoading",
-      "setError",
-      "setBudgets"
-    ]);
+    const budgetServiceSpy = {
+      getBudgets: vi.fn(),
+    };
+    const budgetStateSpy = {
+      setLoading: vi.fn(),
+      setError: vi.fn(),
+      setBudgets: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [BudgetListComponent],
       providers: [
         { provide: BudgetService, useValue: budgetServiceSpy },
-        { provide: BudgetState, useValue: budgetStateSpy }
-      ]
+        { provide: BudgetState, useValue: budgetStateSpy },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(BudgetListComponent);
     component = fixture.componentInstance;
-    budgetService = TestBed.inject(BudgetService) as jasmine.SpyObj<BudgetService>;
-    budgetState = TestBed.inject(BudgetState) as jasmine.SpyObj<BudgetState>;
+    budgetService = TestBed.inject(BudgetService);
+    budgetState = TestBed.inject(BudgetState);
   });
 
   it("deve carregar orçamentos com sucesso", () => {
-    budgetService.getBudgets.and.returnValue(of(mockBudgets));
+    budgetService.getBudgets.mockReturnValue(of(mockBudgets));
 
     component.ngOnInit();
 
@@ -767,11 +750,15 @@ describe("BudgetListComponent", () => {
   });
 
   it("deve tratar erro ao carregar orçamentos", () => {
-    budgetService.getBudgets.and.returnValue(throwError(() => new Error("Erro")));
+    budgetService.getBudgets.mockReturnValue(
+      throwError(() => new Error("Erro"))
+    );
 
     component.ngOnInit();
 
-    expect(budgetState.setError).toHaveBeenCalledWith("Erro ao carregar orçamentos");
+    expect(budgetState.setError).toHaveBeenCalledWith(
+      "Erro ao carregar orçamentos"
+    );
     expect(budgetState.setLoading).toHaveBeenCalledWith(false);
   });
 });
@@ -840,14 +827,17 @@ test(features/budgets): adicionar testes para BudgetService
 ### Problemas Comuns
 
 1. **Erro de Import Circular**
+
    - Verificar dependências entre features
    - Usar shared services quando necessário
 
 2. **Lazy Loading não funciona**
+
    - Verificar configuração de rotas
    - Confirmar exports corretos nos módulos
 
 3. **Estado não atualiza**
+
    - Verificar se está usando signals
    - Confirmar injeção correta de serviços
 

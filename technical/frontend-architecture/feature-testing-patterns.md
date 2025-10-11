@@ -13,7 +13,7 @@ tags: ["testing_patterns", "feature_based", "angular", "typescript", "signals"]
 related_docs:
   ["testing-strategy.md", "feature-organization.md", "state-management.md"]
 ai_context: "Comprehensive testing patterns for Feature-Based Architecture with Angular Signals"
-technologies: ["TypeScript", "Angular", "Jest", "Angular Signals", "DTOs"]
+technologies: ["TypeScript", "Angular", "Vitest", "Angular Signals", "DTOs"]
 patterns: ["Feature-Based", "Test-Driven Development", "Reactive Testing"]
 last_updated: "2025-01-24"
 ```
@@ -69,25 +69,25 @@ import { createMockBudgetDto } from "@test/factories/DtoFactory";
 describe("BudgetListComponent", () => {
   let component: BudgetListComponent;
   let fixture: ComponentFixture<BudgetListComponent>;
-  let budgetService: jasmine.SpyObj<BudgetService>;
-  let budgetState: jasmine.SpyObj<BudgetState>;
+  let budgetService: any;
+  let budgetState: any;
 
   beforeEach(async () => {
-    const budgetServiceSpy = jasmine.createSpyObj("BudgetService", [
-      "getBudgets",
-      "createBudget",
-      "updateBudget",
-      "deleteBudget",
-    ]);
+    const budgetServiceSpy = {
+      getBudgets: vi.fn(),
+      createBudget: vi.fn(),
+      updateBudget: vi.fn(),
+      deleteBudget: vi.fn(),
+    };
 
-    const budgetStateSpy = jasmine.createSpyObj("BudgetState", [
-      "budgets",
-      "loading",
-      "error",
-      "setBudgets",
-      "setLoading",
-      "setError",
-    ]);
+    const budgetStateSpy = {
+      budgets: vi.fn(),
+      loading: vi.fn(),
+      error: vi.fn(),
+      setBudgets: vi.fn(),
+      setLoading: vi.fn(),
+      setError: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [BudgetListComponent],
@@ -99,10 +99,8 @@ describe("BudgetListComponent", () => {
 
     fixture = TestBed.createComponent(BudgetListComponent);
     component = fixture.componentInstance;
-    budgetService = TestBed.inject(
-      BudgetService
-    ) as jasmine.SpyObj<BudgetService>;
-    budgetState = TestBed.inject(BudgetState) as jasmine.SpyObj<BudgetState>;
+    budgetService = TestBed.inject(BudgetService);
+    budgetState = TestBed.inject(BudgetState);
   });
 
   describe("initialization", () => {
@@ -125,7 +123,7 @@ describe("BudgetListComponent", () => {
         createMockBudgetDto({ id: "budget-2", name: "Budget 2" }),
       ];
 
-      budgetService.getBudgets.and.returnValue(of(mockBudgets));
+      budgetService.getBudgets.mockReturnValue(of(mockBudgets));
       budgetState.budgets = signal(mockBudgets);
 
       // Act
@@ -181,8 +179,8 @@ describe("BudgetListComponent", () => {
         id: "budget-123",
       });
 
-      budgetService.createBudget.and.returnValue(of(createdBudget));
-      budgetService.getBudgets.and.returnValue(of([createdBudget]));
+      budgetService.createBudget.mockReturnValue(of(createdBudget));
+      budgetService.getBudgets.mockReturnValue(of([createdBudget]));
 
       // Act
       component.createBudget(createBudgetDto);
@@ -314,21 +312,21 @@ import { createMockBudgetDto } from "@test/factories/DtoFactory";
 
 describe("BudgetService", () => {
   let service: BudgetService;
-  let httpClient: jasmine.SpyObj<HttpClient>;
-  let budgetState: jasmine.SpyObj<BudgetState>;
+  let httpClient: any;
+  let budgetState: any;
 
   beforeEach(() => {
-    const httpClientSpy = jasmine.createSpyObj("HttpClient", [
-      "get",
-      "post",
-      "put",
-      "delete",
-    ]);
-    const budgetStateSpy = jasmine.createSpyObj("BudgetState", [
-      "setBudgets",
-      "setLoading",
-      "setError",
-    ]);
+    const httpClientSpy = {
+      get: vi.fn(),
+      post: vi.fn(),
+      put: vi.fn(),
+      delete: vi.fn(),
+    };
+    const budgetStateSpy = {
+      setBudgets: vi.fn(),
+      setLoading: vi.fn(),
+      setError: vi.fn(),
+    };
 
     TestBed.configureTestingModule({
       providers: [
@@ -339,8 +337,8 @@ describe("BudgetService", () => {
     });
 
     service = TestBed.inject(BudgetService);
-    httpClient = TestBed.inject(HttpClient) as jasmine.SpyObj<HttpClient>;
-    budgetState = TestBed.inject(BudgetState) as jasmine.SpyObj<BudgetState>;
+    httpClient = TestBed.inject(HttpClient);
+    budgetState = TestBed.inject(BudgetState);
   });
 
   describe("getBudgets", () => {
@@ -665,20 +663,22 @@ import { createMockBudgetDto } from "@test/factories/DtoFactory";
 describe("BudgetListPage", () => {
   let component: BudgetListPage;
   let fixture: ComponentFixture<BudgetListPage>;
-  let budgetService: jasmine.SpyObj<BudgetService>;
-  let budgetState: jasmine.SpyObj<BudgetState>;
-  let router: jasmine.SpyObj<Router>;
+  let budgetService: any;
+  let budgetState: any;
+  let router: any;
 
   beforeEach(async () => {
-    const budgetServiceSpy = jasmine.createSpyObj("BudgetService", [
-      "getBudgets",
-    ]);
-    const budgetStateSpy = jasmine.createSpyObj("BudgetState", [
-      "budgets",
-      "loading",
-      "error",
-    ]);
-    const routerSpy = jasmine.createSpyObj("Router", ["navigate"]);
+    const budgetServiceSpy = {
+      getBudgets: vi.fn(),
+    };
+    const budgetStateSpy = {
+      budgets: vi.fn(),
+      loading: vi.fn(),
+      error: vi.fn(),
+    };
+    const routerSpy = {
+      navigate: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [BudgetListPage],
@@ -691,18 +691,16 @@ describe("BudgetListPage", () => {
 
     fixture = TestBed.createComponent(BudgetListPage);
     component = fixture.componentInstance;
-    budgetService = TestBed.inject(
-      BudgetService
-    ) as jasmine.SpyObj<BudgetService>;
-    budgetState = TestBed.inject(BudgetState) as jasmine.SpyObj<BudgetState>;
-    router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
+    budgetService = TestBed.inject(BudgetService);
+    budgetState = TestBed.inject(BudgetState);
+    router = TestBed.inject(Router);
   });
 
   describe("page initialization", () => {
     it("should load data on page init", () => {
       // Arrange
       const mockBudgets: BudgetResponseDto[] = [createMockBudgetDto()];
-      budgetService.getBudgets.and.returnValue(of(mockBudgets));
+      budgetService.getBudgets.mockReturnValue(of(mockBudgets));
       budgetState.budgets = signal(mockBudgets);
 
       // Act
@@ -825,50 +823,50 @@ import { TransactionService } from "@features/transactions/services/transaction.
 import { BudgetState } from "@features/budgets/state/budget.state";
 import { TransactionState } from "@features/transactions/state/transaction.state";
 
-export function createMockBudgetService(): jasmine.SpyObj<BudgetService> {
-  return jasmine.createSpyObj("BudgetService", [
-    "getBudgets",
-    "createBudget",
-    "updateBudget",
-    "deleteBudget",
-    "getBudgetById",
-  ]);
+export function createMockBudgetService() {
+  return {
+    getBudgets: vi.fn(),
+    createBudget: vi.fn(),
+    updateBudget: vi.fn(),
+    deleteBudget: vi.fn(),
+    getBudgetById: vi.fn(),
+  };
 }
 
-export function createMockTransactionService(): jasmine.SpyObj<TransactionService> {
-  return jasmine.createSpyObj("TransactionService", [
-    "getTransactions",
-    "createTransaction",
-    "updateTransaction",
-    "deleteTransaction",
-    "getTransactionById",
-  ]);
+export function createMockTransactionService() {
+  return {
+    getTransactions: vi.fn(),
+    createTransaction: vi.fn(),
+    updateTransaction: vi.fn(),
+    deleteTransaction: vi.fn(),
+    getTransactionById: vi.fn(),
+  };
 }
 
-export function createMockBudgetState(): jasmine.SpyObj<BudgetState> {
-  return jasmine.createSpyObj("BudgetState", [
-    "budgets",
-    "loading",
-    "error",
-    "setBudgets",
-    "setLoading",
-    "setError",
-    "totalBudgets",
-    "totalBudgetAmount",
-  ]);
+export function createMockBudgetState() {
+  return {
+    budgets: vi.fn(),
+    loading: vi.fn(),
+    error: vi.fn(),
+    setBudgets: vi.fn(),
+    setLoading: vi.fn(),
+    setError: vi.fn(),
+    totalBudgets: vi.fn(),
+    totalBudgetAmount: vi.fn(),
+  };
 }
 
-export function createMockTransactionState(): jasmine.SpyObj<TransactionState> {
-  return jasmine.createSpyObj("TransactionState", [
-    "transactions",
-    "loading",
-    "error",
-    "setTransactions",
-    "setLoading",
-    "setError",
-    "totalTransactions",
-    "totalAmount",
-  ]);
+export function createMockTransactionState() {
+  return {
+    transactions: vi.fn(),
+    loading: vi.fn(),
+    error: vi.fn(),
+    setTransactions: vi.fn(),
+    setLoading: vi.fn(),
+    setError: vi.fn(),
+    totalTransactions: vi.fn(),
+    totalAmount: vi.fn(),
+  };
 }
 ```
 
@@ -927,10 +925,10 @@ export class FeatureTestingHelpers {
 ```typescript
 // test/integration/feature-communication.spec.ts
 describe("Feature Communication", () => {
-  let budgetService: jasmine.SpyObj<BudgetService>;
-  let transactionService: jasmine.SpyObj<TransactionService>;
-  let budgetState: jasmine.SpyObj<BudgetState>;
-  let transactionState: jasmine.SpyObj<TransactionState>;
+  let budgetService: any;
+  let transactionService: any;
+  let budgetState: any;
+  let transactionState: any;
 
   beforeEach(() => {
     budgetService = createMockBudgetService();
@@ -993,17 +991,20 @@ describe("Lazy Loading", () => {
 ```json
 {
   "scripts": {
-    "test": "ng test",
-    "test:watch": "ng test --watch",
-    "test:coverage": "ng test --code-coverage",
-    "test:features": "ng test --include='**/features/**/*.spec.ts'",
-    "test:shared": "ng test --include='**/shared/**/*.spec.ts'",
-    "test:dtos": "ng test --include='**/dtos/**/*.spec.ts'",
-    "test:state": "ng test --include='**/state/**/*.spec.ts'",
-    "test:budgets": "ng test --include='**/features/budgets/**/*.spec.ts'",
-    "test:transactions": "ng test --include='**/features/transactions/**/*.spec.ts'",
-    "test:goals": "ng test --include='**/features/goals/**/*.spec.ts'",
-    "test:integration": "ng test --include='**/integration/**/*.spec.ts'"
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "test:run": "vitest run",
+    "test:ci": "vitest run --coverage --reporter=verbose",
+    "test:features": "vitest run --include='**/features/**/*.spec.ts'",
+    "test:shared": "vitest run --include='**/shared/**/*.spec.ts'",
+    "test:dtos": "vitest run --include='**/dtos/**/*.spec.ts'",
+    "test:state": "vitest run --include='**/state/**/*.spec.ts'",
+    "test:budgets": "vitest run --include='**/features/budgets/**/*.spec.ts'",
+    "test:transactions": "vitest run --include='**/features/transactions/**/*.spec.ts'",
+    "test:goals": "vitest run --include='**/features/goals/**/*.spec.ts'",
+    "test:integration": "vitest run --include='**/integration/**/*.spec.ts'"
   }
 }
 ```
