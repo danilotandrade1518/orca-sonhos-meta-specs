@@ -17,6 +17,12 @@ Este diretório contém toda a documentação de negócio do projeto OrçaSonhos
 - 4 personas principais e segmentação por nível de conhecimento financeiro
 - Motivações, dores e jornada do cliente desde descoberta até maestria
 
+### [`financial-health.md`](./financial-health.md)
+**Saúde Financeira e Indicadores**
+- Definição de saúde financeira no contexto do OrçaSonhos
+- Indicadores mínimos, fórmulas e faixas de interpretação
+- Base conceitual para componentes como `FinancialHealthIndicatorComponent` no dashboard
+
 ### [`03_funcionalidades_core.md`](./03_funcionalidades_core.md)
 **Funcionalidades Essenciais do Produto**
 - Top 8 funcionalidades que definem a identidade do OrçaSonhos

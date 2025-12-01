@@ -190,7 +190,7 @@ As **funcionalidades core** são os pilares que definem a identidade do OrçaSon
 **Elementos visuais:**
 
 - Barras de progresso das metas
-- Indicadores de saúde financeira
+- Indicadores de saúde financeira (ver `business/financial-health.md` para definição e fórmulas)
 - Alertas e sugestões personalizadas
 - Resumo de conquistas recentes
 
