@@ -129,22 +129,27 @@ O OrçaSonhos é modelado com agregados independentes, todos conectados por refe
 ---
 
 ### Envelope (Envelope de Gastos)
-**Responsabilidade**: Controlar "dinheiro separado" para gastos por categoria
+**Responsabilidade**: Controlar limite de gastos por categoria
 
 **Características**:
-- Saldo próprio (reservado para a categoria)
-- Limite de gastos mensais/anuais
+- Limite de gastos mensais/anuais (armazenado)
 - Status ativo/inativo
-- Meta de economia para a categoria
+- Meta de economia para a categoria (opcional)
+- **Uso atual calculado**: Soma das transações de despesa da categoria no período
 
 **Relacionamentos**:
 - `budgetId` (referência ao Budget)
-- `categoryId` (referência à Category)
+- `categoryId` (referência à Category) - relacionamento 1:1
+
+**Cálculo de Uso**:
+- O uso do envelope **não é armazenado**, mas **calculado** a partir das transações
+- Fórmula: `currentUsage = SUM(transações de despesa WHERE categoryId = envelope.categoryId AND status = 'completed' AND data no período)`
+- Percentual de uso: `(currentUsage / limitInCents) × 100`
 
 **Invariantes**:
 - Deve estar vinculado a uma Category válida
-- Saldo não pode ser negativo
 - Limite de gastos deve ser >= 0
+- Uso calculado pode exceder o limite (indica estouro do orçamento)
 
 ---
 
@@ -235,6 +240,7 @@ Algumas regras de consistência cruzam agregados:
 - **Account.balance** = SUM(Transactions daquela Account)
 - **CreditCardBill.totalAmount** = SUM(Transactions do cartão no período)
 - **Account.availableBalance** = balance - SUM(Goals.currentAmount)
+- **Envelope.currentUsage** = SUM(Transactions de despesa WHERE categoryId = envelope.categoryId AND status = 'completed' AND data no período)
 
 ## Exemplo Conceitual
 
@@ -266,8 +272,29 @@ class Transaction {
   amount: Money;
   type: TransactionTypeEnum; // INCOME, EXPENSE, TRANSFER
   accountId: string;         // Sempre presente
+  categoryId: string;        // Categoria da transação
   
   // Afeta Account.balance
+}
+
+// Envelope controlando gastos por categoria
+class Envelope {
+  categoryId: string;         // Categoria vinculada (1:1)
+  limitInCents: number;       // Limite de gastos no período
+  
+  getCurrentUsage(transactions: Transaction[], period: DatePeriod): number {
+    // Calcula uso a partir das transações de despesa da categoria
+    return transactions
+      .filter(t => t.categoryId === this.categoryId)
+      .filter(t => t.type === TransactionTypeEnum.EXPENSE)
+      .filter(t => t.status === TransactionStatusEnum.COMPLETED)
+      .filter(t => period.contains(t.date))
+      .reduce((sum, t) => sum + t.amount.value, 0);
+  }
+  
+  getUsagePercentage(transactions: Transaction[], period: DatePeriod): number {
+    return (this.getCurrentUsage(transactions, period) / this.limitInCents) * 100;
+  }
 }
 ```
 
