@@ -4,7 +4,7 @@
 
 Adotamos um modelo de domínio rico (DDD) com agregados, invariantes e regras explícitas em Use Cases. A tentativa de expressar estas operações via REST puro (verbs + resources canônicos) resultaria em:
 
-- **Ambiguidade** de verbos HTTP para operações específicas (`mark-transaction-late`, `cancel-scheduled-transaction`, `transfer-between-envelopes`)
+- **Ambiguidade** de verbos HTTP para operações específicas (`mark-transaction-late`, `cancel-scheduled-transaction`, `update-envelope-limit`)
 - **Sobrecarga semântica** de múltiplos endpoints PATCH/PUT semanticamente distintos sobre o mesmo recurso
 - **Risco de anemic domain** ao tentar forçar operações complexas dentro de CRUD genérico
 
@@ -25,7 +25,8 @@ POST /budget/create-budget
 POST /transaction/mark-transaction-late
 POST /transaction/cancel-scheduled-transaction
 POST /credit-card-bill/pay-credit-card-bill
-POST /envelope/transfer-between-envelopes
+POST /envelope/update-envelope-limit
+POST /transaction/reclassify-transaction
 POST /account/transfer-between-accounts
 POST /goal/add-amount-to-goal
 POST /goal/remove-amount-from-goal

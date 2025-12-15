@@ -29,7 +29,7 @@ Adiar a implementação dos itens listados em "Backlog Pós-MVP". Manter no MVP 
 1. Controle de concorrência otimista (version / updated_at no WHERE de UPDATE ou coluna `version`).
 2. Locks pessimistas explícitos (`SELECT ... FOR UPDATE`) em contas/envelopes/faturas durante cálculos sensíveis.
 3. Testes de corrida simulando operações concorrentes (transferências simultâneas, pagamento repetido).
-4. Idempotency keys para comandos sensíveis a retry (transfer, pay-credit-card-bill, reconcile, envelope-transfer).
+4. Idempotency keys para comandos sensíveis a retry (transfer-between-accounts, pay-credit-card-bill, reconcile).
 5. Retry automático para deadlocks / erros transientes (backoff limitado).
 
 ### Persistência & Consistência Assíncrona

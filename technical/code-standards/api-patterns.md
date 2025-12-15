@@ -10,7 +10,7 @@ POST /budget/create-budget
 POST /transaction/create-transaction
 POST /transaction/mark-transaction-late  
 POST /credit-card-bill/pay-credit-card-bill
-POST /envelope/transfer-between-envelopes
+POST /envelope/update-envelope-limit
 POST /account/transfer-between-accounts
 
 // ✅ Consultas: GET com recursos RESTful

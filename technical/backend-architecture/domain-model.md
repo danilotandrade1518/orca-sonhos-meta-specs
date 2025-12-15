@@ -151,6 +151,15 @@ O OrçaSonhos é modelado com agregados independentes, todos conectados por refe
 - Limite de gastos deve ser >= 0
 - Uso calculado pode exceder o limite (indica estouro do orçamento)
 
+**Operações Válidas**:
+- **Ajustar limite**: Editar `limitInCents` do envelope (aumentar ou diminuir)
+- **Reclassificar transações**: Mudar `categoryId` de transações existentes (afeta uso calculado de ambos envelopes)
+- **Desativar/ativar**: Controlar se o envelope está ativo para o período
+
+**Operações que NÃO fazem sentido**:
+- ❌ **Transferência entre envelopes**: Como o uso é calculado (não armazenado), não há "saldo" para transferir
+  - **Alternativa**: Ajustar limites de ambos envelopes ou reclassificar transações
+
 ---
 
 ### Goal (Meta Financeira)

@@ -6,7 +6,7 @@ Accepted - 2025-08-17
 
 ## Contexto
 
-O backend segue arquitetura DDD + Clean Architecture com Use Cases específicos por regra de negócio. As operações de mutação (commands) vão além de CRUD simples (ex: `mark-transaction-late`, `transfer-between-envelopes`, `pay-credit-card-bill`). Forçar essas operações em verbos REST canônicos (PUT/PATCH/DELETE) sobre um mesmo recurso gera ambiguidade, endpoints verborrágicos ou múltiplas semânticas num único verbo.
+O backend segue arquitetura DDD + Clean Architecture com Use Cases específicos por regra de negócio. As operações de mutação (commands) vão além de CRUD simples (ex: `mark-transaction-late`, `update-envelope-limit`, `pay-credit-card-bill`). Forçar essas operações em verbos REST canônicos (PUT/PATCH/DELETE) sobre um mesmo recurso gera ambiguidade, endpoints verborrágicos ou múltiplas semânticas num único verbo.
 
 ## Decisão
 
@@ -23,7 +23,10 @@ Exemplos:
 - `POST /budget/create-budget`
 - `POST /transaction/mark-transaction-late`
 - `POST /credit-card-bill/pay-credit-card-bill`
-- `POST /envelope/transfer-between-envelopes`
+- `POST /envelope/update-envelope-limit` (ajustar limite)
+- `POST /transaction/reclassify-transaction` (reclassificar transação para outra categoria)
+
+> **Nota (2025-01-24)**: A operação `transfer-between-envelopes` foi removida do escopo, pois envelopes não armazenam saldo - apenas limites. O uso é calculado a partir das transações. Para "transferir" orçamento entre categorias, use: (1) ajustar limites de ambos envelopes, ou (2) reclassificar transações existentes.
 
 Consultas (queries) não fazem parte desta decisão e poderão adotar outro estilo (ex: GET /query handlers) futuramente.
 
