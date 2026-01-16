@@ -58,11 +58,24 @@ O OrçaSonhos é modelado com agregados independentes, todos conectados por refe
 - `categoryId` (referência à Category)
 - Opcionalmente `creditCardId` para compras no cartão
 
+**Comportamento Automático com Cartão de Crédito**:
+- Quando uma transação é criada com `creditCardId`, o sistema automaticamente:
+  1. Determina o período da fatura baseado na data da transação e `closingDay` do cartão
+  2. Busca fatura `OPEN` existente` para o cartão no período determinado
+  3. Se não existir, cria nova fatura automaticamente com `amount` = valor da transação
+  4. Se existir, atualiza o `amount` recalculando a soma de todas as transações do período
+  5. Garante atomicidade: se falhar criação/atualização de fatura, a transação não é criada
+- **Regras de Validação**:
+  - Transações retroativas podem atualizar faturas `OPEN`, `CLOSED` ou `OVERDUE`
+  - Transações retroativas **não podem** atualizar faturas `PAID` (retorna erro)
+  - Transações agendadas (data futura) também criam/atualizam faturas automaticamente
+
 **Invariantes**:
 - Sempre deve ter Account de destino válida
 - Valor deve ser > 0
 - Status deve ser consistente com data da transação
 - Data não pode estar muito no futuro (limite configurável)
+- Se `creditCardId` presente, cartão deve existir e fatura deve poder ser criada/atualizada
 
 ---
 
@@ -121,10 +134,28 @@ O OrçaSonhos é modelado com agregados independentes, todos conectados por refe
 - `budgetId` (referência ao Budget)
 - `creditCardId` (referência ao CreditCard)
 
+**Criação e Atualização Automática**:
+- **Criação Automática**: Quando uma transação é criada com `creditCardId` e não existe fatura `OPEN` para o período:
+  - Sistema determina o período baseado na data da transação e `closingDay` do cartão
+  - Lógica de período: se transação ocorre antes do `closingDay` → período atual, senão → período seguinte
+  - Calcula `closingDate` e `dueDate` automaticamente usando `closingDay` e `dueDay` do cartão
+  - Cria nova fatura com `amount` = valor da transação e `status` = `OPEN`
+- **Atualização Automática**: Quando uma transação é criada com `creditCardId` e já existe fatura `OPEN` para o período:
+  - Sistema busca todas as transações do cartão no período (incluindo a nova)
+  - Recalcula `amount` = soma de todas as transações do período
+  - Atualiza a fatura existente com o novo valor
+  - Garante que `amount` sempre reflita a soma real das transações
+- **Validações**:
+  - Transações retroativas podem atualizar faturas `OPEN`, `CLOSED` ou `OVERDUE`
+  - Transações retroativas **não podem** atualizar faturas `PAID` (retorna erro e impede criação da transação)
+  - Transações agendadas (data futura) também criam/atualizam faturas automaticamente
+- **Compatibilidade**: Faturas criadas manualmente mantêm compatibilidade total com o comportamento automático
+
 **Invariantes**:
 - Valor deve sempre bater com Transactions do cartão no período
 - Status deve progredir logicamente (OPEN → CLOSED → PAID)
 - Não pode ter duas faturas abertas para o mesmo cartão
+- Se transação com `creditCardId` é criada, fatura correspondente deve existir e estar atualizada
 
 ---
 

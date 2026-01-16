@@ -173,12 +173,54 @@ O OrçaSonhos permite **gerenciar cartões de crédito de forma integrada ao con
   - Listagem das transações dessa fatura
 - O pagamento da fatura é **registrado como uma nova transação**, com categoria "Pagamento de Fatura" e origem em uma conta bancária ou orçamento.
 
+#### 🚀 Criação e Atualização Automática de Faturas
+
+**Comportamento Automático**: Quando uma transação é criada com cartão de crédito (`creditCardId`), o sistema **automaticamente**:
+
+1. **Determina o Período da Fatura**:
+   - Baseado na data da transação e no dia de fechamento do cartão (`closingDay`)
+   - Se transação ocorre **antes** do `closingDay` → pertence à fatura que fecha naquele mês
+   - Se transação ocorre **após** o `closingDay` → pertence à fatura do mês seguinte
+   - **Exemplo**: Cartão com fechamento no dia 10. Transação em 05/01 → fatura de janeiro. Transação em 15/01 → fatura de fevereiro
+
+2. **Cria Fatura Automaticamente** (se não existir):
+   - Busca fatura `OPEN` para o cartão no período determinado
+   - Se não existir, cria nova fatura com:
+     - `closingDate`: calculado baseado no `closingDay` e período
+     - `dueDate`: calculado baseado no `dueDay` do cartão no mês seguinte ao fechamento
+     - `amount`: inicial = valor da transação
+     - `status`: `OPEN`
+
+3. **Atualiza Fatura Existente** (se já existir):
+   - Busca todas as transações do cartão no período correspondente
+   - Recalcula `amount` = soma de todas as transações do período
+   - Atualiza a fatura existente com o novo valor
+   - Garante que o valor sempre reflita a soma real das transações
+
+**Regras de Validação**:
+- ✅ Transações retroativas podem atualizar faturas `OPEN`, `CLOSED` ou `OVERDUE`
+- ❌ Transações retroativas **não podem** atualizar faturas `PAID` (sistema retorna erro e impede criação da transação)
+- ✅ Transações agendadas (data futura) também criam/atualizam faturas automaticamente
+- ✅ Faturas criadas manualmente mantêm compatibilidade total com o comportamento automático
+
+**Exemplo Prático**:
+1. Usuário cria transação de R$ 100,00 em 05/01 com cartão que fecha no dia 10
+2. Sistema determina que pertence à fatura de janeiro (fecha em 10/01)
+3. Sistema cria automaticamente fatura de janeiro com `amount` = R$ 100,00
+4. Usuário cria segunda transação de R$ 50,00 em 08/01 com o mesmo cartão
+5. Sistema encontra fatura de janeiro existente
+6. Sistema busca todas as transações do período (R$ 100 + R$ 50)
+7. Sistema atualiza fatura com `amount` = R$ 150,00
+
 #### Benefícios:
 
 - Mantém a consistência nos relatórios por categoria
 - Permite controle real de limite e fatura
 - Não fragmenta a experiência de lançamento
 - Permite visão clara da fatura e pagamento
+- **Elimina trabalho manual**: Faturas são criadas/atualizadas automaticamente
+- **Garante consistência**: Valor da fatura sempre reflete a soma real das transações
+- **Atomicidade**: Se falhar criação/atualização de fatura, transação não é criada
 
 ### 💳 Fatura de Cartão (CreditCardBill)
 
@@ -191,6 +233,13 @@ O OrçaSonhos permite **gerenciar cartões de crédito de forma integrada ao con
   - Referência ao cartão de crédito
 - Permite visualização consolidada de gastos por fatura
 - Facilita controle de pagamentos e histórico de faturas
+
+#### Criação e Atualização Automática
+
+- **Criação Automática**: Faturas são criadas automaticamente quando transações com `creditCardId` são lançadas
+- **Atualização Automática**: O valor da fatura (`amount`) é recalculado automaticamente sempre que uma nova transação é adicionada ao período
+- **Invariante Garantida**: Não pode existir duas faturas `OPEN` para o mesmo cartão
+- **Valor Sempre Consistente**: `fatura.amount` sempre igual à soma das transações do período
 
 ---
 
